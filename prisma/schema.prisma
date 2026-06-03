@@ -1,0 +1,123 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+  EXPIRED
+}
+
+enum OtpPurpose {
+  CHANGE_EMAIL
+  CHANGE_PASSWORD
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  firstName    String?
+  lastName     String?
+  passwordHash String
+  role         Role     @default(ADMIN)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  eventsCreated      Event[]      @relation("EventCreator")
+  invitationsSent    Invitation[] @relation("InvitationInviter")
+  invitationUsed     Invitation?  @relation("InvitationUsedBy")
+  invitationsRevoked Invitation[] @relation("InvitationRevoker")
+  otpCodes           OtpCode[]
+}
+
+model OtpCode {
+  id        String     @id @default(cuid())
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  purpose   OtpPurpose
+  code      String
+  payload   String?
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime   @default(now())
+
+  @@index([userId, purpose])
+}
+
+model Invitation {
+  id          String           @id @default(cuid())
+  email       String?
+  token       String           @unique
+  status      InvitationStatus @default(PENDING)
+  expiresAt   DateTime
+  createdAt   DateTime         @default(now())
+  usedAt      DateTime?
+  revokedAt   DateTime?
+
+  invitedById String
+  invitedBy   User   @relation("InvitationInviter", fields: [invitedById], references: [id])
+
+  usedById String? @unique
+  usedBy   User?   @relation("InvitationUsedBy", fields: [usedById], references: [id])
+
+  revokedById String?
+  revokedBy   User?   @relation("InvitationRevoker", fields: [revokedById], references: [id])
+}
+
+model Event {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  slug        String    @unique
+  isActive    Boolean   @default(true)
+  startsAt    DateTime?
+  endsAt      DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  createdById String
+  createdBy   User   @relation("EventCreator", fields: [createdById], references: [id])
+
+  participants Participant[]
+  votes        Vote[]
+}
+
+model Participant {
+  id           String  @id @default(cuid())
+  name         String
+  imageUrl     String?
+  displayOrder Int     @default(0)
+
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  votes Vote[]
+}
+
+model Vote {
+  id          String   @id @default(cuid())
+  voterKey    String
+  ipAddress   String?
+  fingerprint String?
+  createdAt   DateTime @default(now())
+
+  eventId String
+  event   Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  participantId String
+  participant   Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, voterKey])
+}
