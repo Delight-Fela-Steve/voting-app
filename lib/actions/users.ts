@@ -96,6 +96,7 @@ export async function acceptInvitation(
   }
 
   await signOut({ redirectTo: "/admin/login?registered=1" });
+  return {}
 }
 
 export async function deleteUser(
