@@ -44,7 +44,9 @@ export default async function AdminInvitationsPage() {
         </p>
       </div>
 
-      <CreateInvitationForm emailConfigured={isInviteEmailConfigured()} />
+      <CreateInvitationForm
+        emailConfigured={await isInviteEmailConfigured()}
+      />
 
       <section className="space-y-4">
         <h2 className="text-lg font-semibold text-text-primary">All invitations</h2>

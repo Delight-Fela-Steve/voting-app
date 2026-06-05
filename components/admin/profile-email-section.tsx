@@ -112,14 +112,14 @@ export function ProfileEmailSection({ email }: ProfileEmailSectionProps) {
           ) : (
             <div className="flex items-start justify-between gap-2">
               <span>{email}</span>
-              <Button
+              <button
                 type="button"
-                variant="ghost"
-                className="shrink-0 px-3 py-1.5 text-xs"
                 onClick={handleStartChange}
+                className="inline-flex shrink-0 rounded-md p-1.5 text-text-muted hover:bg-surface-raised hover:text-accent"
+                aria-label="Change email"
               >
-                Change email
-              </Button>
+                <PencilIcon />
+              </button>
             </div>
           )}
         </dd>
@@ -136,5 +136,13 @@ export function ProfileEmailSection({ email }: ProfileEmailSectionProps) {
         />
       ) : null}
     </>
+  );
+}
+
+function PencilIcon() {
+  return (
+    <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+      <path d="M2.695 14.763l-1.262 3.154a.5.5 0 00.65.65l3.155-1.262a4 4 0 001.343-.885L17.5 5.5a2.121 2.121 0 00-3-3L3.58 13.42a4 4 0 00-.885 1.343zM12.803 4.908l3.252 3.252a1 1 0 001.414-1.414L14.217 3.494a1 1 0 00-1.414 1.414z" />
+    </svg>
   );
 }

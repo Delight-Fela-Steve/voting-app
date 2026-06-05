@@ -31,6 +31,7 @@ const navItems: NavItem[] = [
   { href: "/admin/events", label: "Events" },
   { href: "/admin/users", label: "Users", superAdminOnly: true },
   { href: "/admin/invitations", label: "Invitations", superAdminOnly: true },
+  { href: "/admin/settings", label: "Settings", superAdminOnly: true },
   { href: "/admin/profile", label: "Profile" },
 ];
 

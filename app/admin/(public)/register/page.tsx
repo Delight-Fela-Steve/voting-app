@@ -14,8 +14,8 @@ function RegisterShell({
 }) {
   return (
     <main className="flex min-h-screen items-center justify-center bg-bg p-6">
-      <Card className="w-full max-w-md p-8">
-        <div className="text-center">
+      <Card className="w-full max-w-md p-8 text-center">
+        <div>
           <p className="text-lg font-bold text-text-primary">Voting App</p>
           <p className="text-xs text-text-muted">Admin panel</p>
         </div>

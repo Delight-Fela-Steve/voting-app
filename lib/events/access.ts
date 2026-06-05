@@ -24,7 +24,6 @@ export async function getEventsForSession() {
 
 export async function getEventForUser(id: string) {
   const user = await requireUser();
-
   return prisma.event.findFirst({
     where: { id, ...eventWhereForUser(user) },
     include: {

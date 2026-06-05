@@ -77,12 +77,12 @@ export function CreateInvitationForm({
               Send invitation email
               {emailConfigured ? (
                 <span className="block text-xs text-text-muted">
-                  Requires an email address above. Uses Resend when configured.
+                  Requires an email address above. Uses Gmail from Settings.
                 </span>
               ) : (
                 <span className="block text-xs text-amber-400">
-                  Email is not configured — set RESEND_API_KEY and EMAIL_FROM in
-                  .env to enable sending.
+                  Email is not configured — connect Gmail in Settings to enable
+                  sending.
                 </span>
               )}
             </span>

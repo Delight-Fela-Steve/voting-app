@@ -76,7 +76,7 @@ export async function createInvitation(
   const result: InvitationActionState = { inviteUrl };
 
   if (sendEmail) {
-    if (!isInviteEmailConfigured()) {
+    if (!(await isInviteEmailConfigured())) {
       result.emailSkipped = true;
       return result;
     }

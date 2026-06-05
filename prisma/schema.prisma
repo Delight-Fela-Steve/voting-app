@@ -24,6 +24,11 @@ enum OtpPurpose {
   CHANGE_PASSWORD
 }
 
+enum EmailProvider {
+  GMAIL_OAUTH
+  GMAIL_PASSWORD
+}
+
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
@@ -120,4 +125,17 @@ model Vote {
   participant   Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
 
   @@unique([eventId, voterKey])
+}
+
+model EmailConfig {
+  id           String        @id
+  provider     EmailProvider
+  fromName     String
+  fromEmail    String
+  appPassword  String?
+  accessToken  String?
+  refreshToken String?
+  tokenExpiry  DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 }

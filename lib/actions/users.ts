@@ -2,7 +2,7 @@
 
 import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
+import { signOut } from "@/lib/auth";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import { getValidPendingInvitation } from "@/lib/invitations/validate";
 import { prisma } from "@/lib/prisma";
@@ -95,7 +95,7 @@ export async function acceptInvitation(
     return { error: "Registration failed. Please try again." };
   }
 
-  redirect("/admin/login?registered=1");
+  await signOut({ redirectTo: "/admin/login?registered=1" });
 }
 
 export async function deleteUser(

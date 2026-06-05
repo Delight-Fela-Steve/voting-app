@@ -29,7 +29,7 @@ export function RegisterForm({
   >(boundAction, {});
 
   return (
-    <form action={formAction} className="mt-6 space-y-4">
+    <form action={formAction} className="mt-6 space-y-4 text-left">
       <p className="text-sm text-text-muted">
         Invited by{" "}
         <span className="font-medium text-text-primary">{invitedByName}</span>
