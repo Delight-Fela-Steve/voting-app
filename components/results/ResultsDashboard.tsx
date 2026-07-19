@@ -11,6 +11,8 @@ type ResultsDashboardProps = {
   initialResults: EventResults;
 };
 
+const POLL_INTERVAL_MS = 2000;
+
 function formatUpdatedAt(iso: string) {
   return new Intl.DateTimeFormat(undefined, {
     dateStyle: "medium",
@@ -44,28 +46,56 @@ export function ResultsDashboard({
   >("connecting");
 
   useEffect(() => {
-    const source = new EventSource(`/api/results/${slug}/stream`);
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    let cancelled = false;
+    const controller = new AbortController();
 
-    source.onopen = () => {
-      setConnectionState("live");
-    };
+    async function poll() {
+      // When hidden, stop rescheduling; visibilitychange resumes polling.
+      if (cancelled || document.hidden) return;
 
-    source.onmessage = (event) => {
       try {
-        const payload = JSON.parse(event.data) as EventResults;
-        setResults(payload);
-        setConnectionState("live");
-      } catch {
-        setConnectionState("error");
-      }
-    };
+        const response = await fetch(`/api/results/${slug}`, {
+          cache: "no-store",
+          signal: controller.signal,
+        });
 
-    source.onerror = () => {
-      setConnectionState("error");
-    };
+        if (!response.ok) {
+          throw new Error(`Poll failed with status ${response.status}`);
+        }
+
+        const payload = (await response.json()) as EventResults;
+
+        if (!cancelled) {
+          setResults(payload);
+          setConnectionState("live");
+        }
+      } catch {
+        if (!cancelled && !controller.signal.aborted) {
+          setConnectionState("error");
+        }
+      } finally {
+        if (!cancelled && !document.hidden) {
+          timeoutId = setTimeout(poll, POLL_INTERVAL_MS);
+        }
+      }
+    }
+
+    function onVisibilityChange() {
+      if (!document.hidden && !cancelled) {
+        clearTimeout(timeoutId);
+        void poll();
+      }
+    }
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    void poll();
 
     return () => {
-      source.close();
+      cancelled = true;
+      controller.abort();
+      clearTimeout(timeoutId);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, [slug]);
 

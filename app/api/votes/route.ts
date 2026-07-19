@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getEventResults } from "@/lib/results";
 import { buildVoterKey, getClientIp } from "@/lib/votes/voter-key";
-import { voteEmitter } from "@/lib/voteEmitter";
 
 type VoteBody = {
   slug?: string;
@@ -94,11 +92,6 @@ export async function POST(request: Request) {
     }
 
     throw error;
-  }
-
-  const results = await getEventResults(slug.trim());
-  if (results) {
-    voteEmitter.emitVoteUpdate(slug.trim(), results);
   }
 
   return NextResponse.json({ ok: true }, { status: 201 });

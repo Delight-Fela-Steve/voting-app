@@ -281,11 +281,9 @@ Public results page with a live-updating bar chart showing participant rankings 
 - [x] Create `/app/results/[slug]/page.tsx`
 - [x] Install Recharts
 - [x] Build `VoteBarChart` component (horizontal bars, sorted desc)
-- [x] Create `lib/voteEmitter.ts` global EventEmitter singleton
-- [x] Build SSE route `/api/results/[slug]/stream/route.ts`
-- [x] Emit vote event from `/api/votes` after successful insert
-- [x] Connect results page to SSE with EventSource
-- [x] Re-sort and re-render chart on each SSE data push
+- [x] Build results endpoint `/api/results/[slug]/route.ts` (JSON tallies from DB)
+- [x] Poll the results endpoint from the client every 2 seconds
+- [x] Re-sort and re-render chart on each poll response
 - [x] Show total vote count + last updated timestamp
 - [x] Handle empty state (no votes yet)
 
@@ -297,12 +295,11 @@ Public results page with a live-updating bar chart showing participant rankings 
 - Install Recharts. Build `<VoteBarChart>` with horizontal BarChart:
   - Y-axis: participant names · X-axis: vote count
   - Sorted by votes descending in real-time
-- Live updates via Server-Sent Events (SSE):
-  - `lib/voteEmitter.ts` — global Node.js EventEmitter (singleton per server instance)
-  - `app/api/results/[slug]/stream/route.ts` — streams `text/event-stream`
-    Sets up ReadableStream, registers listener on voteEmitter, cleans up on disconnect.
-  - `/api/votes` emits to voteEmitter after every successful insert
-  - Client: `new EventSource('/api/results/[slug]/stream')` → parse JSON → update chart
+- Live updates via database-backed polling:
+  - `app/api/results/[slug]/route.ts` returns current tallies as JSON (`Cache-Control: no-store`)
+  - Client polls the endpoint every 2 seconds with a recursive `setTimeout` (no overlapping requests), pauses while the tab is hidden
+  - Correct across multiple serverless instances because PostgreSQL is the single source of truth
+  - Replaced the original in-process EventEmitter + SSE push, which only worked on a single Node.js instance
 - Show total vote count, last-updated indicator, and empty state message.
 
 </details>
@@ -343,7 +340,7 @@ Public results page with a live-updating bar chart showing participant rankings 
 | Authentication | Auth.js v5 — User table + bcrypt passwords |
 | Admin onboarding | Invitation tokens + `/admin/register` |
 | Email (optional) | Resend for invite links + OTP codes |
-| Real-time | Server-Sent Events (SSE) |
+| Real-time | Client polling (2s interval, DB-backed) |
 | Charts | Recharts (horizontal bar chart) |
 | QR Codes | qrcode.react |
 | Fingerprinting | @fingerprintjs/fingerprintjs |

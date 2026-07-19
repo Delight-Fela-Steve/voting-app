@@ -1,6 +1,6 @@
 # Voting App
 
-A full-stack live voting platform built with Next.js 16 (App Router), PostgreSQL, and Auth.js. Admins manage events and participants; the public votes via shareable links; results update in real time via Server-Sent Events — no polling, no WebSockets, no external realtime infrastructure.
+A full-stack live voting platform built with Next.js 16 (App Router), PostgreSQL, and Auth.js. Admins manage events and participants; the public votes via shareable links; results update live through lightweight database-backed polling that stays correct on any number of server instances, with no WebSockets and no external realtime infrastructure.
 
 ![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)
@@ -31,7 +31,7 @@ A full-stack live voting platform built with Next.js 16 (App Router), PostgreSQL
 - **Event and participant management** — admins create voting events with unique public slugs, add participants with optional images and display ordering, and toggle events active/inactive.
 - **Public voting** — no account required; voters reach the ballot at `/vote/[slug]`.
 - **Duplicate-vote prevention** — browser fingerprint (FingerprintJS) and server-side IP are combined and hashed into a `voterKey`; the database enforces one vote per key per event.
-- **Real-time results** — `/results/[slug]` streams live vote counts over Server-Sent Events with initial SSR data and a 30-second keepalive heartbeat.
+- **Real-time results** — `/results/[slug]` server-renders the current tallies, then polls a JSON endpoint every 2 seconds for updates; correct across any number of serverless instances.
 - **QR code generation** — vote and results URLs are rendered as downloadable QR codes for physical display.
 - **OTP-guarded profile changes** — email and password changes require a time-limited one-time code sent to the current email address.
 - **Role-based access** — `SUPER_ADMIN` sees all events and manages users/invitations; `ADMIN` manages only their own events.
@@ -54,8 +54,7 @@ flowchart TD
         CC["Client Components\n(voting UI, results chart)"]
         SA["Server Actions\n(all mutations)"]
         APIVote["POST /api/votes"]
-        APISSE["GET /api/results/[slug]/stream"]
-        Emitter["voteEmitter\n(in-process EventEmitter)"]
+        APIResults["GET /api/results/[slug]"]
     end
 
     subgraph infra ["External / Optional"]
@@ -70,9 +69,8 @@ flowchart TD
     SA --> PG
     Browser -->|"vote submit"| APIVote
     APIVote --> PG
-    APIVote -->|"emit"| Emitter
-    Emitter --> APISSE
-    Browser -->|"SSE subscribe"| APISSE
+    Browser -->|"poll every 2s"| APIResults
+    APIResults --> PG
     Browser --> FP
     FP -->|"visitorId"| APIVote
     SA -->|"invite / OTP"| Resend
@@ -84,9 +82,9 @@ flowchart TD
 |-----|--------|------|
 | `/` | Public | Server Component |
 | `/vote/[slug]` | Public | Server Component + Client voting UI |
-| `/results/[slug]` | Public | SSR + Client SSE subscription |
+| `/results/[slug]` | Public | SSR + Client polling (2s interval) |
 | `/api/votes` | Public | Route Handler (POST) |
-| `/api/results/[slug]/stream` | Public | Route Handler (GET, SSE) |
+| `/api/results/[slug]` | Public | Route Handler (GET, JSON tallies) |
 | `/admin/login` | Public (unauthenticated only) | Server Component |
 | `/admin/register?token=…` | Public (valid token) | Server Component + form |
 | `/admin` | Authenticated | Server Component |
@@ -103,8 +101,7 @@ sequenceDiagram
     participant FingerprintJS
     participant VotesAPI as POST /api/votes
     participant DB as PostgreSQL
-    participant Emitter as voteEmitter
-    participant SSE as GET /api/results/stream
+    participant ResultsAPI as GET /api/results/[slug]
 
     Browser->>FingerprintJS: load (async, non-blocking)
     FingerprintJS-->>Browser: visitorId
@@ -118,10 +115,13 @@ sequenceDiagram
         VotesAPI-->>Browser: 409 Already voted
     else success
         DB-->>VotesAPI: Vote row
-        VotesAPI->>Emitter: emit("vote:slug", results)
-        Emitter->>SSE: push updated counts
-        SSE-->>Browser: data: { participants, totalVotes }
         VotesAPI-->>Browser: 201 Created
+    end
+
+    loop every 2s (results page)
+        Browser->>ResultsAPI: GET /api/results/[slug]
+        ResultsAPI->>DB: aggregate vote counts
+        ResultsAPI-->>Browser: { participants, totalVotes }
     end
 ```
 
@@ -213,7 +213,7 @@ erDiagram
 
 ### 1. Next.js App Router with Server Actions as the mutation layer
 
-Rather than building a separate REST API for admin operations, all mutations (create/update/delete event, manage participants, invite users, etc.) go through Next.js Server Actions. This co-locates data fetching and mutation logic, enables `revalidatePath` for cache invalidation after writes, and eliminates a class of client/server API contract drift. Route Handlers are reserved for the two cases that genuinely require them: the vote submission endpoint (called from a client component without a form) and the SSE stream.
+Rather than building a separate REST API for admin operations, all mutations (create/update/delete event, manage participants, invite users, etc.) go through Next.js Server Actions. This co-locates data fetching and mutation logic, enables `revalidatePath` for cache invalidation after writes, and eliminates a class of client/server API contract drift. Route Handlers are reserved for the two cases that genuinely require them: the vote submission endpoint (called from a client component without a form) and the polled results endpoint.
 
 ### 2. Invite-only admin registration
 
@@ -231,11 +231,11 @@ Auth.js is configured with `strategy: "jwt"`. This means no session table in the
 
 Next.js 16 introduced a breaking change to the edge middleware API. Auth.js v5 provides a `proxy.ts` integration point that runs at the correct stage of the request pipeline on this version. Using classic `middleware.ts` would silently fail to protect routes. The `AGENTS.md` file in this repository documents this explicitly to prevent regressions.
 
-### 5. In-process `EventEmitter` for real-time results
+### 5. Database-backed polling for real-time results
 
-Live vote counts are delivered over Server-Sent Events. When a vote is recorded, the API handler emits on a `voteEmitter` (a Node.js `EventEmitter` on `globalThis` to survive hot-reload). SSE handlers subscribe to `vote:${slug}` channels and push updated results to connected browsers.
+Live vote counts are delivered by short-interval polling. The results page seeds its state from server-rendered data, then fetches `GET /api/results/[slug]` every 2 seconds. The endpoint reads the current tallies straight from PostgreSQL, so every response reflects all recorded votes regardless of which server instance handled a given `POST /api/votes`.
 
-This requires zero external infrastructure (no Redis, no WebSocket server). The known trade-off: this only works correctly on a single Node.js instance. A horizontally-scaled deployment would require replacing `voteEmitter` with Redis Pub/Sub or a similar message broker.
+This requires zero external infrastructure (no Redis, no WebSocket server) and, because the database is the single source of truth, it remains correct on multi-instance serverless deployments such as Vercel. An earlier implementation pushed updates over Server-Sent Events from an in-process `EventEmitter`; that only worked when all traffic hit a single Node.js instance, so it was replaced with polling.
 
 ### 6. Privacy-oriented voter identification
 
@@ -289,21 +289,15 @@ This makes the application deployable without email infrastructure, useful for s
 
 ## Real-time Results
 
-The results page at `/results/[slug]` delivers vote counts in real time without polling.
+The results page at `/results/[slug]` keeps vote counts current with short-interval polling.
 
 **Initial load (SSR):** the page is server-rendered with the current vote tallies from the database. Users see data immediately, before any JavaScript runs.
 
-**Live updates (SSE):** the client component opens an `EventSource` connection to `/api/results/[slug]/stream`. The server holds the connection open, writing:
-- A `data:` line with serialized `EventResults` JSON on every new vote.
-- A `:` comment line every 30 seconds as a keepalive heartbeat (prevents proxies and load balancers from closing idle connections).
+**Live updates (polling):** the client component fetches `GET /api/results/[slug]` every 2 seconds and re-renders the chart and rankings from the response. The loop uses a recursive `setTimeout`, so a slow response never overlaps the next request. A failed request flips the status badge to "Reconnecting…" while polling continues; the next successful response restores "Updating live". Polling pauses while the tab is hidden and resumes with an immediate fetch when the tab becomes visible again.
 
-**Publication path:**
-1. `POST /api/votes` inserts the vote row.
-2. It calls `voteEmitter.emit("vote:slug", updatedResults)`.
-3. Every active SSE handler subscribed to that channel writes the payload to its response stream.
-4. On client disconnect, the handler calls `voteEmitter.off(...)` to clean up.
+**Results endpoint:** `GET /api/results/[slug]` returns the serialized `EventResults` JSON (participants with counts, total votes, timestamp) computed directly from PostgreSQL, with `Cache-Control: no-store` so no layer caches a stale tally. Route Handlers are not cached by default in Next.js 16.
 
-**Scaling note:** `voteEmitter` lives in the Node.js process. On a single-instance deployment (Vercel Hobby, Railway, single VPS) this works correctly. Multi-instance deployments (Vercel Pro with multiple function instances, ECS, etc.) would require a shared pub/sub layer (Redis, Upstash, etc.) to ensure all SSE clients receive every vote regardless of which instance handled the `POST`.
+**Scaling note:** the database is the single source of truth, so every poll returns complete tallies no matter which serverless instance recorded a given vote. This keeps the feature correct on multi-instance deployments (Vercel and similar) with no shared pub/sub layer and no held-open connections.
 
 ---
 
@@ -323,7 +317,7 @@ The results page at `/results/[slug]` delivers vote counts in real time without 
 │   └── api/
 │       ├── auth/[...nextauth]/   # Auth.js route handler
 │       ├── votes/                # POST — submit a vote
-│       └── results/[slug]/stream # GET — SSE vote stream
+│       └── results/[slug]/       # GET current vote tallies (polled JSON)
 │
 ├── components/
 │   ├── admin/                    # Admin UI: shell, forms, tables, profile OTP
@@ -341,7 +335,6 @@ The results page at `/results/[slug]` delivers vote counts in real time without 
 │   ├── invitations/              # Token validation, expiry logic
 │   ├── email/                    # Resend: invite emails, OTP emails
 │   ├── results.ts                # Aggregate vote counts from DB
-│   ├── voteEmitter.ts            # In-process EventEmitter for SSE pub/sub
 │   ├── prisma.ts                 # Prisma client singleton (globalThis for hot-reload)
 │   ├── slug.ts                   # nanoid slug generation
 │   └── urls.ts                   # Base URL resolution (NEXT_PUBLIC_APP_URL / VERCEL_URL / localhost)
