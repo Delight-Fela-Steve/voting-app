@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+import type { Prisma } from "@/lib/generated/prisma/client";
 import { requireUser, type AuthUser } from "@/lib/auth/require-user";
 import { prisma } from "@/lib/prisma";
 

@@ -1,5 +1,7 @@
 import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from "react";
 
+export { PasswordInput } from "./password-input";
+
 type CardProps = HTMLAttributes<HTMLDivElement> & {
   children: ReactNode;
 };

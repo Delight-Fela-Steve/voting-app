@@ -42,3 +42,8 @@ export function getRegisterInviteUrl(token: string, baseUrl?: string): string {
   const base = trimTrailingSlash(baseUrl ?? getAppBaseUrl());
   return `${base}/admin/register?token=${encodeURIComponent(token)}`;
 }
+
+export function getPasswordResetUrl(token: string, baseUrl?: string): string {
+  const base = trimTrailingSlash(baseUrl ?? getAppBaseUrl());
+  return `${base}/admin/reset-password?token=${encodeURIComponent(token)}`;
+}

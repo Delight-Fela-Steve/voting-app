@@ -6,7 +6,7 @@ import {
   requestPasswordChange,
 } from "@/lib/actions/profile";
 import { OtpDialog } from "@/components/admin/otp-dialog";
-import { Button, Card } from "@/components/ui";
+import { Button, Card, PasswordInput } from "@/components/ui";
 
 const inputClass =
   "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text-primary outline-none focus:ring-2 focus:ring-accent";
@@ -83,9 +83,8 @@ export function ProfilePasswordSection() {
             <label htmlFor="current-password" className={labelClass}>
               Current password
             </label>
-            <input
+            <PasswordInput
               id="current-password"
-              type="password"
               autoComplete="current-password"
               required
               value={currentPassword}
@@ -99,9 +98,8 @@ export function ProfilePasswordSection() {
             <label htmlFor="new-password" className={labelClass}>
               New password
             </label>
-            <input
+            <PasswordInput
               id="new-password"
-              type="password"
               autoComplete="new-password"
               required
               minLength={8}
@@ -116,9 +114,8 @@ export function ProfilePasswordSection() {
             <label htmlFor="confirm-new-password" className={labelClass}>
               Confirm new password
             </label>
-            <input
+            <PasswordInput
               id="confirm-new-password"
-              type="password"
               autoComplete="new-password"
               required
               minLength={8}

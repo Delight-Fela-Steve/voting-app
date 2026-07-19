@@ -1,9 +1,10 @@
 "use client";
 
 import { signIn } from "next-auth/react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { Button } from "@/components/ui";
+import { Button, PasswordInput } from "@/components/ui";
 
 const inputClass =
   "w-full rounded-lg border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-accent";
@@ -63,16 +64,24 @@ export function LoginForm() {
         <label htmlFor="password" className={labelClass}>
           Password
         </label>
-        <input
+        <PasswordInput
           id="password"
           name="password"
-          type="password"
           autoComplete="current-password"
           required
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           className={inputClass}
         />
+      </div>
+
+      <div className="text-right">
+        <Link
+          href="/admin/forgot-password"
+          className="text-sm font-medium text-text-muted hover:text-text-primary"
+        >
+          Forgot password?
+        </Link>
       </div>
 
       {error ? (

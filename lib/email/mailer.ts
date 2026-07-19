@@ -1,7 +1,7 @@
 import nodemailer from "nodemailer";
 import type Mail from "nodemailer/lib/mailer";
 import type SMTPTransport from "nodemailer/lib/smtp-transport";
-import type { EmailConfig } from "@prisma/client";
+import type { EmailConfig } from "@/lib/generated/prisma/client";
 import { decrypt } from "@/lib/email/encrypt";
 import { EMAIL_CONFIG_SINGLETON_ID } from "@/lib/email/email-config-id";
 import { prisma } from "@/lib/prisma";
@@ -144,7 +144,14 @@ export async function sendMail(input: MailSendInput): Promise<MailSendResult> {
     return { sent: false, reason: "not_configured" };
   }
 
-  const transportOptions = await createTransport(config);
+  let transportOptions: SMTPTransport.Options | null;
+  try {
+    transportOptions = await createTransport(config);
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Failed to prepare email transport.";
+    return { sent: false, reason: "failed", error: message };
+  }
   if (!transportOptions) {
     return { sent: false, reason: "not_configured" };
   }

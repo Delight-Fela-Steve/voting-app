@@ -14,8 +14,8 @@
   },
   "dependencies": {
     "@fingerprintjs/fingerprintjs": "^5.2.0",
-    "@prisma/client": "^6.19.3",
-    "@prisma/engines": "^7.8.0",
+    "@prisma/adapter-pg": "^7.8.0",
+    "@prisma/client": "^7.8.0",
     "bcryptjs": "^3.0.3",
     "nanoid": "^5.1.5",
     "next": "16.2.7",
@@ -37,7 +37,7 @@
     "dotenv": "^17.4.2",
     "eslint": "^9",
     "eslint-config-next": "16.2.7",
-    "prisma": "^6.19.3",
+    "prisma": "^7.8.0",
     "tailwindcss": "^4",
     "tsx": "^4.20.3",
     "typescript": "^5"

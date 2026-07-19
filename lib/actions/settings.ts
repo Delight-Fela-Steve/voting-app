@@ -6,7 +6,7 @@ import { canEncrypt, encrypt } from "@/lib/email/encrypt";
 import { EMAIL_CONFIG_SINGLETON_ID } from "@/lib/email/email-config-id";
 import { isEmailConfigured, sendMail } from "@/lib/email/mailer";
 import { prisma } from "@/lib/prisma";
-import type { EmailProvider } from "@prisma/client";
+import type { EmailProvider } from "@/lib/generated/prisma/client";
 
 export type EmailConfigPublic = {
   provider: EmailProvider;

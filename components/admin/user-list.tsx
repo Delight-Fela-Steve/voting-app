@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { deleteUser } from "@/lib/actions/users";
 import { Card } from "@/components/ui";
-import type { Role } from "@prisma/client";
+import type { Role } from "@/lib/generated/prisma/client";
 
 export type UserListItem = {
   id: string;

@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { LogoutButton } from "@/components/admin/logout-button";
 import { ThemeToggle } from "@/components/theme-toggle";
-import type { Role } from "@prisma/client";
+import type { Role } from "@/lib/generated/prisma/client";
 
 type AdminShellProps = {
   user: {

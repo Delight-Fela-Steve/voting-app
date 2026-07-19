@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { saveGmailPasswordConfig } from "@/lib/actions/settings";
-import { Button } from "@/components/ui";
+import { Button, PasswordInput } from "@/components/ui";
 import type { EmailConfigPublic } from "@/lib/actions/settings";
 
 type GmailPasswordFormProps = {
@@ -100,9 +100,8 @@ export function GmailPasswordForm({
         <label htmlFor="gmail-app-password" className={labelClass}>
           App password
         </label>
-        <input
+        <PasswordInput
           id="gmail-app-password"
-          type="password"
           value={appPassword}
           onChange={(e) => setAppPassword(e.target.value)}
           placeholder={

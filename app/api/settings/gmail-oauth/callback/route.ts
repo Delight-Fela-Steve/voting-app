@@ -13,9 +13,12 @@ type GoogleTokenResponse = {
   access_token: string;
   refresh_token?: string;
   expires_in?: number;
+  scope?: string;
   error?: string;
   error_description?: string;
 };
+
+const GMAIL_SCOPE = "https://mail.google.com/";
 
 type GoogleUserInfo = {
   email?: string;
@@ -95,6 +98,10 @@ export async function GET(request: Request) {
 
   if (!tokens.refresh_token) {
     return settingsRedirect(baseUrl, { error: "oauth_no_refresh_token" });
+  }
+
+  if (!tokens.scope?.split(" ").includes(GMAIL_SCOPE)) {
+    return settingsRedirect(baseUrl, { error: "oauth_missing_gmail_scope" });
   }
 
   const userInfoResponse = await fetch(

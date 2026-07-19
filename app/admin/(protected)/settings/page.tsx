@@ -22,6 +22,8 @@ const OAUTH_FLASH_ERRORS: Record<string, string> = {
   oauth_no_refresh_token:
     "Google did not return a refresh token. Revoke app access in your Google account and try again with consent.",
   oauth_profile_failed: "Could not read your Google account email.",
+  oauth_missing_gmail_scope:
+    "Gmail access was not granted. When Google asks for permissions, check the box that allows sending email, then connect again.",
 };
 
 type SettingsPageProps = {

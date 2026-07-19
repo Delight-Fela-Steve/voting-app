@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth";
-import type { Role } from "@prisma/client";
+import type { Role } from "@/lib/generated/prisma/client";
 
 export type AuthUser = {
   id: string;

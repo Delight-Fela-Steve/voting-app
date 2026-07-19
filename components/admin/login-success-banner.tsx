@@ -6,14 +6,17 @@ export function LoginSuccessBanner() {
   const searchParams = useSearchParams();
   const registered = searchParams.get("registered") === "1";
   const emailChanged = searchParams.get("email_changed") === "1";
+  const passwordReset = searchParams.get("reset") === "1";
 
-  if (!registered && !emailChanged) {
+  if (!registered && !emailChanged && !passwordReset) {
     return null;
   }
 
   const message = emailChanged
     ? "Email updated successfully. Sign in with your new email address."
-    : "Account created successfully. Sign in with your new credentials.";
+    : passwordReset
+      ? "Password reset successfully. Sign in with your new password."
+      : "Account created successfully. Sign in with your new credentials.";
 
   return (
     <p

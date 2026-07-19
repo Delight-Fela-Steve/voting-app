@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { Button } from "@/components/ui";
+import { Button, PasswordInput } from "@/components/ui";
 import {
   acceptInvitation,
   type RegisterActionState,
@@ -74,10 +74,9 @@ export function RegisterForm({
         <label htmlFor="password" className={labelClass}>
           Password
         </label>
-        <input
+        <PasswordInput
           id="password"
           name="password"
-          type="password"
           autoComplete="new-password"
           required
           minLength={8}
@@ -90,10 +89,9 @@ export function RegisterForm({
         <label htmlFor="confirmPassword" className={labelClass}>
           Confirm password
         </label>
-        <input
+        <PasswordInput
           id="confirmPassword"
           name="confirmPassword"
-          type="password"
           autoComplete="new-password"
           required
           minLength={8}

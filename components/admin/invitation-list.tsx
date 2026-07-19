@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { revokeInvitation } from "@/lib/actions/invitations";
 import { CopyInviteLinkButton } from "@/components/admin/copy-invite-link-button";
 import { Card } from "@/components/ui";
-import type { InvitationStatus } from "@prisma/client";
+import type { InvitationStatus } from "@/lib/generated/prisma/client";
 
 export type InvitationListItem = {
   id: string;

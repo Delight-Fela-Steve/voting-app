@@ -1,10 +1,10 @@
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 enum Role {
@@ -40,11 +40,24 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  eventsCreated      Event[]      @relation("EventCreator")
-  invitationsSent    Invitation[] @relation("InvitationInviter")
-  invitationUsed     Invitation?  @relation("InvitationUsedBy")
-  invitationsRevoked Invitation[] @relation("InvitationRevoker")
-  otpCodes           OtpCode[]
+  eventsCreated       Event[]              @relation("EventCreator")
+  invitationsSent     Invitation[]         @relation("InvitationInviter")
+  invitationUsed      Invitation?          @relation("InvitationUsedBy")
+  invitationsRevoked  Invitation[]         @relation("InvitationRevoker")
+  otpCodes            OtpCode[]
+  passwordResetTokens PasswordResetToken[]
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
 }
 
 model OtpCode {

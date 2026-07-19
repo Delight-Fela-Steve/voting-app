@@ -6,7 +6,10 @@ export default auth((req) => {
   const isLoggedIn = !!req.auth;
 
   const isPublicAdminRoute =
-    pathname === "/admin/login" || pathname.startsWith("/admin/register");
+    pathname === "/admin/login" ||
+    pathname.startsWith("/admin/register") ||
+    pathname.startsWith("/admin/forgot-password") ||
+    pathname.startsWith("/admin/reset-password");
 
   if (!isLoggedIn && !isPublicAdminRoute) {
     const loginUrl = new URL("/admin/login", req.nextUrl.origin);
