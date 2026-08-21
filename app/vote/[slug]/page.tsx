@@ -72,6 +72,7 @@ export default async function VotePage({ params }: PageProps) {
         eventName={event.name}
         eventDescription={event.description}
         participants={event.participants}
+        geofenceEnabled={event.geofenceEnabled}
       />
     </main>
   );

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { haversineDistanceMeters } from "@/lib/geo/distance";
 import { prisma } from "@/lib/prisma";
 import { buildVoterKey, getClientIp } from "@/lib/votes/voter-key";
 
@@ -6,6 +7,8 @@ type VoteBody = {
   slug?: string;
   participantId?: string;
   fingerprint?: string;
+  latitude?: number;
+  longitude?: number;
 };
 
 export async function POST(request: Request) {
@@ -17,7 +20,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { slug, participantId, fingerprint } = body;
+  const { slug, participantId, fingerprint, latitude, longitude } = body;
 
   if (!slug?.trim() || !participantId?.trim()) {
     return NextResponse.json(
@@ -31,6 +34,10 @@ export async function POST(request: Request) {
     select: {
       id: true,
       isActive: true,
+      geofenceEnabled: true,
+      latitude: true,
+      longitude: true,
+      radiusMeters: true,
       participants: {
         where: { id: participantId },
         select: { id: true },
@@ -51,6 +58,38 @@ export async function POST(request: Request) {
       { error: "Invalid participant for this event" },
       { status: 400 }
     );
+  }
+
+  let distanceMeters: number | null = null;
+
+  if (event.geofenceEnabled) {
+    if (
+      typeof latitude !== "number" ||
+      typeof longitude !== "number" ||
+      !Number.isFinite(latitude) ||
+      !Number.isFinite(longitude)
+    ) {
+      return NextResponse.json(
+        { error: "Location is required to vote in this event" },
+        { status: 400 }
+      );
+    }
+
+    if (event.latitude !== null && event.longitude !== null && event.radiusMeters !== null) {
+      distanceMeters = haversineDistanceMeters(
+        latitude,
+        longitude,
+        event.latitude,
+        event.longitude
+      );
+
+      if (distanceMeters > event.radiusMeters) {
+        return NextResponse.json(
+          { error: "You are outside the allowed voting area" },
+          { status: 403 }
+        );
+      }
+    }
   }
 
   const ipAddress = getClientIp(request);
@@ -78,6 +117,9 @@ export async function POST(request: Request) {
         voterKey,
         ipAddress,
         fingerprint: fingerprint?.trim() || null,
+        latitude: event.geofenceEnabled ? latitude : null,
+        longitude: event.geofenceEnabled ? longitude : null,
+        distanceMeters,
       },
     });
   } catch (error) {

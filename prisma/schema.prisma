@@ -95,15 +95,19 @@ model Invitation {
 }
 
 model Event {
-  id          String    @id @default(cuid())
-  name        String
-  description String?
-  slug        String    @unique
-  isActive    Boolean   @default(true)
-  startsAt    DateTime?
-  endsAt      DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id              String    @id @default(cuid())
+  name            String
+  description     String?
+  slug            String    @unique
+  isActive        Boolean   @default(true)
+  startsAt        DateTime?
+  endsAt          DateTime?
+  geofenceEnabled Boolean   @default(false)
+  latitude        Float?
+  longitude       Float?
+  radiusMeters    Int?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   createdById String
   createdBy   User   @relation("EventCreator", fields: [createdById], references: [id])
@@ -125,11 +129,14 @@ model Participant {
 }
 
 model Vote {
-  id          String   @id @default(cuid())
-  voterKey    String
-  ipAddress   String?
-  fingerprint String?
-  createdAt   DateTime @default(now())
+  id             String   @id @default(cuid())
+  voterKey       String
+  ipAddress      String?
+  fingerprint    String?
+  latitude       Float?
+  longitude      Float?
+  distanceMeters Float?
+  createdAt      DateTime @default(now())
 
   eventId String
   event   Event @relation(fields: [eventId], references: [id], onDelete: Cascade)

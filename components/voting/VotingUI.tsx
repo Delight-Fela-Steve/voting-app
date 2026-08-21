@@ -6,14 +6,40 @@ import { ParticipantAvatar } from "@/components/ParticipantAvatar";
 import { Button, Card } from "@/components/ui";
 import type { PublicParticipant } from "@/lib/events/public";
 import { loadVisitorId } from "@/lib/voting/client-fingerprint";
+import {
+  requestVoterLocation,
+  type GeolocationResult,
+} from "@/lib/voting/client-geolocation";
 
-type ViewState = "voting" | "submitting" | "success" | "already_voted" | "error";
+type ViewState =
+  | "location_gate"
+  | "location_requesting"
+  | "location_blocked"
+  | "voting"
+  | "submitting"
+  | "success"
+  | "already_voted"
+  | "error";
 
 type VotingUIProps = {
   slug: string;
   eventName: string;
   eventDescription: string | null;
   participants: PublicParticipant[];
+  geofenceEnabled: boolean;
+};
+
+const LOCATION_BLOCKED_MESSAGES: Record<
+  Exclude<GeolocationResult, { ok: true }>["reason"],
+  string
+> = {
+  denied:
+    "You denied the location permission request. Enable location access for this site in your browser settings, then reload the page to vote.",
+  timeout:
+    "We couldn't get your location in time. Check your connection and try again.",
+  unavailable:
+    "Your location couldn't be determined. Make sure location services are enabled on your device and try again.",
+  unsupported: "Your browser doesn't support location access, so you can't vote in this event.",
 };
 
 export function VotingUI({
@@ -21,12 +47,20 @@ export function VotingUI({
   eventName,
   eventDescription,
   participants,
+  geofenceEnabled,
 }: VotingUIProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [view, setView] = useState<ViewState>("voting");
+  const [view, setView] = useState<ViewState>(
+    geofenceEnabled ? "location_gate" : "voting",
+  );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [blockedReason, setBlockedReason] =
+    useState<Exclude<GeolocationResult, { ok: true }>["reason"] | null>(null);
   const [visitorId, setVisitorId] = useState<string | null>(null);
   const [fingerprintReady, setFingerprintReady] = useState(false);
+  const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(
+    null,
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -41,6 +75,20 @@ export function VotingUI({
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  const shareLocation = useCallback(async () => {
+    setView("location_requesting");
+    const result = await requestVoterLocation();
+
+    if (result.ok) {
+      setCoords({ latitude: result.latitude, longitude: result.longitude });
+      setView("voting");
+      return;
+    }
+
+    setBlockedReason(result.reason);
+    setView("location_blocked");
   }, []);
 
   const submitVote = useCallback(async () => {
@@ -59,6 +107,7 @@ export function VotingUI({
           slug,
           participantId: selectedId,
           fingerprint: visitorId ?? ((await loadVisitorId()) || undefined),
+          ...(coords ?? {}),
         }),
       });
 
@@ -81,7 +130,46 @@ export function VotingUI({
       setErrorMessage("Network error. Check your connection and try again.");
       setView("error");
     }
-  }, [selectedId, slug, view, visitorId]);
+  }, [selectedId, slug, view, visitorId, coords]);
+
+  if (view === "location_gate" || view === "location_requesting") {
+    return (
+      <VoteStatusPanel
+        title="Location required to vote"
+        description={`${eventName} restricts voting to people at the event location. Share your location to continue.`}
+        icon={<LocationPinIcon />}
+      >
+        <Button
+          onClick={shareLocation}
+          disabled={view === "location_requesting"}
+          className="w-full"
+        >
+          {view === "location_requesting" ? "Checking location…" : "Share my location"}
+        </Button>
+      </VoteStatusPanel>
+    );
+  }
+
+  if (view === "location_blocked") {
+    return (
+      <VoteStatusPanel
+        title="Voting isn't available to you"
+        description={
+          blockedReason
+            ? LOCATION_BLOCKED_MESSAGES[blockedReason]
+            : "We couldn't verify your location."
+        }
+        icon={<LocationPinIcon />}
+        tone="danger"
+      >
+        {blockedReason === "timeout" || blockedReason === "unavailable" ? (
+          <Button onClick={shareLocation} className="w-full">
+            Try again
+          </Button>
+        ) : null}
+      </VoteStatusPanel>
+    );
+  }
 
   if (view === "success") {
     return (
@@ -224,26 +312,52 @@ export function VotingUI({
   );
 }
 
+type StatusTone = "accent" | "muted" | "danger";
+
+const statusToneClasses: Record<StatusTone, string> = {
+  accent: "bg-accent/20 text-accent",
+  muted: "bg-surface-raised text-text-muted",
+  danger: "bg-red-500/15 text-red-400",
+};
+
 function VoteStatusPanel({
   title,
   description,
   children,
+  icon = <CheckIcon className="h-8 w-8" />,
+  tone = "accent",
 }: {
   title: string;
   description: string;
   children: React.ReactNode;
+  icon?: React.ReactNode;
+  tone?: StatusTone;
 }) {
   return (
     <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-6 py-16 text-center">
       <Card className="flex w-full flex-col items-center p-8">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-accent/20 text-accent">
-          <CheckIcon className="h-8 w-8" />
+        <div
+          className={`flex h-16 w-16 items-center justify-center rounded-full ${statusToneClasses[tone]}`}
+        >
+          {icon}
         </div>
         <h1 className="mt-6 text-2xl font-bold text-text-primary">{title}</h1>
         <p className="mt-3 text-text-muted">{description}</p>
         <div className="mt-8 w-full">{children}</div>
       </Card>
     </div>
+  );
+}
+
+function LocationPinIcon({ className = "h-8 w-8" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+      <path
+        fillRule="evenodd"
+        d="M10 18s6-5.686 6-10a6 6 0 10-12 0c0 4.314 6 10 6 10zm0-7a3 3 0 100-6 3 3 0 000 6z"
+        clipRule="evenodd"
+      />
+    </svg>
   );
 }
 

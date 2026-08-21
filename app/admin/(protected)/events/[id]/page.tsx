@@ -66,6 +66,10 @@ export default async function AdminEventDetailPage({ params }: PageProps) {
               isActive: event.isActive,
               startsAt: event.startsAt,
               endsAt: event.endsAt,
+              geofenceEnabled: event.geofenceEnabled,
+              latitude: event.latitude,
+              longitude: event.longitude,
+              radiusMeters: event.radiusMeters,
             }}
           />
         </div>

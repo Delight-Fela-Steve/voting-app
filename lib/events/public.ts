@@ -13,6 +13,10 @@ export type PublicVotingEvent = {
   description: string | null;
   slug: string;
   isActive: boolean;
+  geofenceEnabled: boolean;
+  latitude: number | null;
+  longitude: number | null;
+  radiusMeters: number | null;
   participants: PublicParticipant[];
 };
 
@@ -27,6 +31,10 @@ export async function getPublicEventBySlug(
       description: true,
       slug: true,
       isActive: true,
+      geofenceEnabled: true,
+      latitude: true,
+      longitude: true,
+      radiusMeters: true,
       participants: {
         orderBy: { displayOrder: "asc" },
         select: {

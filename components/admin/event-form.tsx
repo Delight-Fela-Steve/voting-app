@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
+import { EventLocationMap } from "@/components/admin/event-location-map";
 import { Button } from "@/components/ui";
 import type { EventActionState } from "@/lib/actions/events";
 import {
@@ -10,6 +11,7 @@ import {
   type DurationUnit,
 } from "@/lib/datetime/duration";
 import { useCountdown } from "@/lib/datetime/use-countdown";
+import { requestVoterLocation } from "@/lib/voting/client-geolocation";
 
 type EventFormValues = {
   name: string;
@@ -17,7 +19,13 @@ type EventFormValues = {
   isActive: boolean;
   startsAt: Date | null;
   endsAt: Date | null;
+  geofenceEnabled: boolean;
+  latitude: number | null;
+  longitude: number | null;
+  radiusMeters: number | null;
 };
+
+const DEFAULT_RADIUS_METERS = "150";
 
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 
@@ -129,8 +137,57 @@ export function EventForm({ action, submitLabel, event }: EventFormProps) {
   const [duration, setDuration] = useState(() => getInitialDuration(event));
   const [schedule, setSchedule] = useState(() => getInitialSchedule(event));
   const [justSaved, setJustSaved] = useState(false);
+  const [geofenceEnabled, setGeofenceEnabled] = useState(
+    () => event?.geofenceEnabled ?? false,
+  );
+  const [latitude, setLatitude] = useState(() =>
+    event?.latitude !== null && event?.latitude !== undefined
+      ? String(event.latitude)
+      : "",
+  );
+  const [longitude, setLongitude] = useState(() =>
+    event?.longitude !== null && event?.longitude !== undefined
+      ? String(event.longitude)
+      : "",
+  );
+  const [radiusMeters, setRadiusMeters] = useState(() =>
+    event?.radiusMeters !== null && event?.radiusMeters !== undefined
+      ? String(event.radiusMeters)
+      : DEFAULT_RADIUS_METERS,
+  );
+  const [locatingSelf, setLocatingSelf] = useState(false);
+  const [locateError, setLocateError] = useState<string | null>(null);
   const hiddenEndsAtRef = useRef<HTMLInputElement>(null);
   const isFirstRender = useRef(true);
+
+  const parsedLatitude = latitude.trim() ? Number.parseFloat(latitude) : null;
+  const parsedLongitude = longitude.trim() ? Number.parseFloat(longitude) : null;
+  const parsedRadius = radiusMeters.trim() ? Number.parseFloat(radiusMeters) : null;
+
+  function handleMapLocationChange(lat: number, lng: number) {
+    setLatitude(lat.toFixed(6));
+    setLongitude(lng.toFixed(6));
+  }
+
+  async function handleUseCurrentLocation() {
+    setLocatingSelf(true);
+    setLocateError(null);
+
+    const result = await requestVoterLocation();
+
+    setLocatingSelf(false);
+    if (!result.ok) {
+      setLocateError(
+        result.reason === "denied"
+          ? "Location permission was denied. Enable it in your browser settings."
+          : "Couldn't determine your current location. Try again or enter coordinates manually.",
+      );
+      return;
+    }
+
+    setLatitude(result.latitude.toFixed(6));
+    setLongitude(result.longitude.toFixed(6));
+  }
 
   useEffect(() => {
     if (isFirstRender.current) {
@@ -356,6 +413,104 @@ export function EventForm({ action, submitLabel, event }: EventFormProps) {
               "Already ended"
             )}
           </p>
+        ) : null}
+      </div>
+
+      <div className="space-y-3">
+        <label className="flex items-center gap-2 text-sm text-text-muted">
+          <input
+            name="geofenceEnabled"
+            type="checkbox"
+            checked={geofenceEnabled}
+            onChange={(e) => setGeofenceEnabled(e.target.checked)}
+            className="h-4 w-4 rounded border-border bg-surface accent-accent"
+          />
+          Restrict voting to a location
+        </label>
+
+        {geofenceEnabled ? (
+          <div className="space-y-3 rounded-lg border border-border p-4">
+            <div className="flex items-center justify-between gap-3">
+              <p className={labelClass}>Voting location</p>
+              <button
+                type="button"
+                onClick={handleUseCurrentLocation}
+                disabled={locatingSelf}
+                className="text-sm font-medium text-accent hover:text-accent-hover disabled:opacity-50"
+              >
+                {locatingSelf ? "Locating…" : "Use my current location"}
+              </button>
+            </div>
+
+            <EventLocationMap
+              latitude={parsedLatitude}
+              longitude={parsedLongitude}
+              radiusMeters={parsedRadius}
+              onLocationChange={handleMapLocationChange}
+            />
+            <p className="text-xs text-text-muted">
+              Click the map or drag the marker to set the voting location.
+            </p>
+
+            {locateError ? (
+              <p className="text-sm text-red-400" role="alert">
+                {locateError}
+              </p>
+            ) : null}
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="space-y-1">
+                <label htmlFor="latitude" className={labelClass}>
+                  Latitude
+                </label>
+                <input
+                  id="latitude"
+                  name="latitude"
+                  type="number"
+                  step="any"
+                  min={-90}
+                  max={90}
+                  required={geofenceEnabled}
+                  value={latitude}
+                  onChange={(e) => setLatitude(e.target.value)}
+                  className={inputClass}
+                />
+              </div>
+              <div className="space-y-1">
+                <label htmlFor="longitude" className={labelClass}>
+                  Longitude
+                </label>
+                <input
+                  id="longitude"
+                  name="longitude"
+                  type="number"
+                  step="any"
+                  min={-180}
+                  max={180}
+                  required={geofenceEnabled}
+                  value={longitude}
+                  onChange={(e) => setLongitude(e.target.value)}
+                  className={inputClass}
+                />
+              </div>
+              <div className="space-y-1">
+                <label htmlFor="radiusMeters" className={labelClass}>
+                  Radius (meters)
+                </label>
+                <input
+                  id="radiusMeters"
+                  name="radiusMeters"
+                  type="number"
+                  step="1"
+                  min={1}
+                  required={geofenceEnabled}
+                  value={radiusMeters}
+                  onChange={(e) => setRadiusMeters(e.target.value)}
+                  className={inputClass}
+                />
+              </div>
+            </div>
+          </div>
         ) : null}
       </div>
 

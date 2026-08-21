@@ -19,6 +19,48 @@ function parseOptionalDate(value: FormDataEntryValue | null): Date | null {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+function parseOptionalFloat(value: FormDataEntryValue | null): number | null {
+  if (typeof value !== "string" || !value.trim()) {
+    return null;
+  }
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function parseGeofenceFields(formData: FormData) {
+  const geofenceEnabled = formData.get("geofenceEnabled") === "on";
+
+  if (!geofenceEnabled) {
+    return {
+      data: {
+        geofenceEnabled: false,
+        latitude: null,
+        longitude: null,
+        radiusMeters: null,
+      },
+    };
+  }
+
+  const latitude = parseOptionalFloat(formData.get("latitude"));
+  const longitude = parseOptionalFloat(formData.get("longitude"));
+  const radiusRaw = parseOptionalFloat(formData.get("radiusMeters"));
+  const radiusMeters = radiusRaw !== null ? Math.round(radiusRaw) : null;
+
+  if (latitude === null || latitude < -90 || latitude > 90) {
+    return { error: "A valid latitude (-90 to 90) is required." as const };
+  }
+  if (longitude === null || longitude < -180 || longitude > 180) {
+    return { error: "A valid longitude (-180 to 180) is required." as const };
+  }
+  if (radiusMeters === null || radiusMeters <= 0) {
+    return { error: "A voting radius greater than 0 meters is required." as const };
+  }
+
+  return {
+    data: { geofenceEnabled: true, latitude, longitude, radiusMeters },
+  };
+}
+
 function parseEventFields(formData: FormData) {
   const name = formData.get("name");
   const description = formData.get("description");
@@ -26,6 +68,11 @@ function parseEventFields(formData: FormData) {
 
   if (typeof name !== "string" || !name.trim()) {
     return { error: "Event name is required." as const };
+  }
+
+  const geofence = parseGeofenceFields(formData);
+  if ("error" in geofence) {
+    return { error: geofence.error };
   }
 
   const descriptionValue =
@@ -40,6 +87,7 @@ function parseEventFields(formData: FormData) {
       isActive,
       startsAt: parseOptionalDate(formData.get("startsAt")),
       endsAt: parseOptionalDate(formData.get("endsAt")),
+      ...geofence.data,
     },
   };
 }
