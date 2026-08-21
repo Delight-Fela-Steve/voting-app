@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { VoteBarChart } from "@/components/results/VoteBarChart";
 import { Badge, Button, Card } from "@/components/ui";
+import { formatCountdown } from "@/lib/datetime/duration";
+import { useCountdown } from "@/lib/datetime/use-countdown";
 import type { EventResults } from "@/lib/results";
 
 type ResultsDashboardProps = {
@@ -100,6 +102,8 @@ export function ResultsDashboard({
   }, [slug]);
 
   const hasVotes = results.totalVotes > 0;
+  const endsAtMs = results.endsAt ? new Date(results.endsAt).getTime() : null;
+  const remainingMs = useCountdown(endsAtMs);
 
   return (
     <div className="mx-auto w-full max-w-3xl px-6 py-10">
@@ -137,6 +141,21 @@ export function ResultsDashboard({
             </span>
           </p>
         </div>
+
+        {remainingMs !== null ? (
+          <div className="text-sm text-text-muted">
+            {remainingMs > 0 ? (
+              <>
+                <p>Voting ends in</p>
+                <p className="mt-0.5 font-medium tabular-nums text-text-primary">
+                  {formatCountdown(remainingMs)}
+                </p>
+              </>
+            ) : (
+              <p className="font-medium text-text-primary">Event ended</p>
+            )}
+          </div>
+        ) : null}
       </div>
 
       <Card className="mt-8 p-6">

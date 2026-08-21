@@ -13,6 +13,7 @@ export type EventResults = {
   slug: string;
   totalVotes: number;
   participants: ResultParticipant[];
+  endsAt: string | null;
   updatedAt: string;
 };
 
@@ -37,6 +38,7 @@ export async function getEventResults(
       id: true,
       name: true,
       slug: true,
+      endsAt: true,
       participants: {
         orderBy: { displayOrder: "asc" },
         select: {
@@ -73,6 +75,7 @@ export async function getEventResults(
     slug: event.slug,
     totalVotes,
     participants,
+    endsAt: event.endsAt ? event.endsAt.toISOString() : null,
     updatedAt: new Date().toISOString(),
   };
 }

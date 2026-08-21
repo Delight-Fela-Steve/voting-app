@@ -48,7 +48,7 @@ export function Badge({
   );
 }
 
-type ButtonVariant = "primary" | "ghost" | "danger";
+type ButtonVariant = "primary" | "ghost" | "danger" | "success";
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: ButtonVariant;
@@ -62,6 +62,8 @@ const buttonVariants: Record<ButtonVariant, string> = {
     "border border-border bg-transparent text-text-primary hover:bg-surface-raised focus-visible:outline-accent",
   danger:
     "bg-red-600 text-white hover:bg-red-500 focus-visible:outline-red-500",
+  success:
+    "bg-green-600 text-white hover:bg-green-500 focus-visible:outline-green-500",
 };
 
 export function Button({
