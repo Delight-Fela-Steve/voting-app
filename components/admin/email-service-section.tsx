@@ -6,6 +6,7 @@ import {
   sendTestEmail,
   type EmailConfigPublic,
 } from "@/lib/actions/settings";
+import { GmailBackupPasswordForm } from "@/components/admin/gmail-backup-password-form";
 import { GmailOAuthSection } from "@/components/admin/gmail-oauth-section";
 import { GmailPasswordForm } from "@/components/admin/gmail-password-form";
 import { Badge, Button, Card } from "@/components/ui";
@@ -133,6 +134,19 @@ export function EmailServiceSection({
             Disconnect
           </Button>
         </div>
+      ) : null}
+
+      {connected && config?.hasBackupAppPassword ? (
+        <p className="mt-2 text-xs text-text-muted">
+          Disconnecting removes both Gmail OAuth and your backup app password.
+        </p>
+      ) : null}
+
+      {connected && config && config.provider === "GMAIL_OAUTH" ? (
+        <GmailBackupPasswordForm
+          config={config}
+          encryptionConfigured={encryptionConfigured}
+        />
       ) : null}
 
       {connected ? (

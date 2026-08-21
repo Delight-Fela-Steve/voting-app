@@ -2,7 +2,7 @@ import nodemailer from "nodemailer";
 import type Mail from "nodemailer/lib/mailer";
 import type SMTPTransport from "nodemailer/lib/smtp-transport";
 import type { EmailConfig } from "@/lib/generated/prisma/client";
-import { decrypt } from "@/lib/email/encrypt";
+import { decrypt, encrypt } from "@/lib/email/encrypt";
 import { EMAIL_CONFIG_SINGLETON_ID } from "@/lib/email/email-config-id";
 import { prisma } from "@/lib/prisma";
 
@@ -14,7 +14,7 @@ export type MailSendInput = {
 };
 
 export type MailSendResult =
-  | { sent: true }
+  | { sent: true; usedFallback?: boolean }
   | { sent: false; reason: "not_configured" }
   | { sent: false; reason: "failed"; error: string };
 
@@ -66,25 +66,27 @@ async function refreshAccessToken(
   return { accessToken: data.access_token, expiresAt };
 }
 
-async function createTransport(
+async function buildPasswordTransport(
   config: EmailConfig,
 ): Promise<SMTPTransport.Options | null> {
-  if (config.provider === "GMAIL_PASSWORD") {
-    if (!config.appPassword) {
-      return null;
-    }
-    const password = decrypt(config.appPassword);
-    return {
-      host: "smtp.gmail.com",
-      port: 465,
-      secure: true,
-      auth: {
-        user: config.fromEmail,
-        pass: password,
-      },
-    };
+  if (!config.appPassword) {
+    return null;
   }
+  const password = decrypt(config.appPassword);
+  return {
+    host: "smtp.gmail.com",
+    port: 465,
+    secure: true,
+    auth: {
+      user: config.fromEmail,
+      pass: password,
+    },
+  };
+}
 
+async function buildOAuthTransport(
+  config: EmailConfig,
+): Promise<SMTPTransport.Options | null> {
   if (!config.refreshToken) {
     return null;
   }
@@ -104,7 +106,6 @@ async function createTransport(
   if (needsRefresh) {
     const refreshed = await refreshAccessToken(refreshToken);
     accessToken = refreshed.accessToken;
-    const { encrypt } = await import("@/lib/email/encrypt");
     await prisma.emailConfig.update({
       where: { id: EMAIL_CONFIG_SINGLETON_ID },
       data: {
@@ -127,16 +128,40 @@ async function createTransport(
   };
 }
 
+async function buildEnvPasswordTransport(
+  config: EmailConfig,
+): Promise<SMTPTransport.Options | null> {
+  const rawPassword = process.env.EMAIL_APP_PASSWORD;
+  if (!rawPassword) {
+    return null;
+  }
+  return {
+    host: "smtp.gmail.com",
+    port: 465,
+    secure: true,
+    auth: {
+      user: config.fromEmail,
+      pass: rawPassword.replace(/\s/g, ""),
+    },
+  };
+}
+
 export async function isEmailConfigured(): Promise<boolean> {
   const config = await loadEmailConfig();
   if (!config) {
     return false;
   }
-  if (config.provider === "GMAIL_PASSWORD") {
-    return Boolean(config.appPassword);
-  }
-  return Boolean(config.refreshToken);
+  return (
+    Boolean(config.refreshToken) ||
+    Boolean(config.appPassword) ||
+    Boolean(process.env.EMAIL_APP_PASSWORD)
+  );
 }
+
+type TransportAttempt = {
+  label: string;
+  build: () => Promise<SMTPTransport.Options | null>;
+};
 
 export async function sendMail(input: MailSendInput): Promise<MailSendResult> {
   const config = await loadEmailConfig();
@@ -144,34 +169,64 @@ export async function sendMail(input: MailSendInput): Promise<MailSendResult> {
     return { sent: false, reason: "not_configured" };
   }
 
-  let transportOptions: SMTPTransport.Options | null;
-  try {
-    transportOptions = await createTransport(config);
-  } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to prepare email transport.";
-    return { sent: false, reason: "failed", error: message };
-  }
-  if (!transportOptions) {
-    return { sent: false, reason: "not_configured" };
+  const attempts: TransportAttempt[] =
+    config.provider === "GMAIL_PASSWORD"
+      ? [{ label: "password", build: () => buildPasswordTransport(config) }]
+      : [
+          { label: "oauth", build: () => buildOAuthTransport(config) },
+          ...(config.appPassword
+            ? [
+                {
+                  label: "backup password",
+                  build: () => buildPasswordTransport(config),
+                },
+              ]
+            : []),
+          {
+            label: "env fallback password",
+            build: () => buildEnvPasswordTransport(config),
+          },
+        ];
+
+  let lastError: string | null = null;
+
+  for (const attempt of attempts) {
+    let transportOptions: SMTPTransport.Options | null;
+    try {
+      transportOptions = await attempt.build();
+    } catch (error) {
+      lastError =
+        error instanceof Error
+          ? error.message
+          : `Failed to prepare ${attempt.label} transport.`;
+      console.error(
+        `[email] ${attempt.label} transport failed to build: ${lastError}`,
+      );
+      continue;
+    }
+    if (!transportOptions) {
+      continue;
+    }
+
+    const transport = nodemailer.createTransport(transportOptions);
+    try {
+      await transport.sendMail({
+        from: formatFrom(config),
+        to: input.to,
+        subject: input.subject,
+        html: input.html,
+        text: input.text,
+      } satisfies Mail.Options);
+      return { sent: true, usedFallback: attempt !== attempts[0] };
+    } catch (error) {
+      lastError = error instanceof Error ? error.message : "Failed to send email.";
+      console.error(`[email] send via ${attempt.label} failed: ${lastError}`);
+    } finally {
+      transport.close();
+    }
   }
 
-  const transport = nodemailer.createTransport(transportOptions);
-
-  try {
-    await transport.sendMail({
-      from: formatFrom(config),
-      to: input.to,
-      subject: input.subject,
-      html: input.html,
-      text: input.text,
-    } satisfies Mail.Options);
-    return { sent: true };
-  } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to send email.";
-    return { sent: false, reason: "failed", error: message };
-  } finally {
-    transport.close();
-  }
+  return lastError === null
+    ? { sent: false, reason: "not_configured" }
+    : { sent: false, reason: "failed", error: lastError };
 }

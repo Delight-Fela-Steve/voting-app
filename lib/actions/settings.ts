@@ -13,6 +13,7 @@ export type EmailConfigPublic = {
   fromName: string;
   fromEmail: string;
   connected: boolean;
+  hasBackupAppPassword: boolean;
 };
 
 export type SettingsActionState = {
@@ -44,6 +45,8 @@ export async function getEmailConfig(): Promise<EmailConfigPublic | null> {
     fromName: config.fromName,
     fromEmail: config.fromEmail,
     connected: true,
+    hasBackupAppPassword:
+      config.provider === "GMAIL_OAUTH" && Boolean(config.appPassword),
   };
 }
 
@@ -138,6 +141,75 @@ export async function disconnectEmailConfig(): Promise<SettingsActionState> {
   return { success: "Email service disconnected." };
 }
 
+export async function saveBackupAppPassword(input: {
+  appPassword: string;
+}): Promise<SettingsActionState> {
+  await requireSuperAdmin();
+
+  if (!canEncrypt()) {
+    return {
+      error:
+        "EMAIL_ENCRYPTION_KEY is not configured. Set a 64-character hex key in your environment.",
+    };
+  }
+
+  const existing = await prisma.emailConfig.findUnique({
+    where: { id: EMAIL_CONFIG_SINGLETON_ID },
+  });
+
+  if (!existing || existing.provider !== "GMAIL_OAUTH") {
+    return {
+      error: "Connect Gmail via OAuth first before adding a backup app password.",
+    };
+  }
+
+  if (!isGmailAddress(existing.fromEmail)) {
+    return {
+      error: "A backup app password requires your connected account to be a Gmail address.",
+    };
+  }
+
+  const appPassword = input.appPassword.replace(/\s/g, "");
+  if (appPassword.length < 16) {
+    return { error: "Enter a valid Gmail app password (16 characters)." };
+  }
+
+  await prisma.emailConfig.update({
+    where: { id: EMAIL_CONFIG_SINGLETON_ID },
+    data: { appPassword: encrypt(appPassword) },
+  });
+
+  revalidatePath("/admin/settings");
+  revalidatePath("/admin/invitations");
+
+  return {
+    success:
+      "Backup app password saved. It will be used automatically if Gmail OAuth stops working.",
+  };
+}
+
+export async function removeBackupAppPassword(): Promise<SettingsActionState> {
+  await requireSuperAdmin();
+
+  const existing = await prisma.emailConfig.findUnique({
+    where: { id: EMAIL_CONFIG_SINGLETON_ID },
+  });
+
+  if (!existing || existing.provider !== "GMAIL_OAUTH" || !existing.appPassword) {
+    return { error: "No backup app password is configured." };
+  }
+
+  await prisma.emailConfig.update({
+    where: { id: EMAIL_CONFIG_SINGLETON_ID },
+    data: { appPassword: null },
+  });
+
+  revalidatePath("/admin/settings");
+  revalidatePath("/admin/invitations");
+
+  return { success: "Backup app password removed." };
+}
+
 export async function sendTestEmail(): Promise<SettingsActionState> {
   await requireSuperAdmin();
 
@@ -165,7 +237,11 @@ export async function sendTestEmail(): Promise<SettingsActionState> {
   });
 
   if (result.sent) {
-    return { success: `Test email sent to ${config.fromEmail}.` };
+    return result.usedFallback
+      ? {
+          success: `Test email sent to ${config.fromEmail} using the backup app password. Your Gmail OAuth connection appears broken; reconnect Gmail when convenient.`,
+        }
+      : { success: `Test email sent to ${config.fromEmail}.` };
   }
 
   if (result.reason === "not_configured") {

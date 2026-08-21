@@ -141,7 +141,6 @@ export async function GET(request: Request) {
       accessToken: encrypt(tokens.access_token),
       refreshToken: encrypt(tokens.refresh_token),
       tokenExpiry,
-      appPassword: null,
     },
   });
 
