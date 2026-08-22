@@ -5,6 +5,7 @@ import { DeleteEventButton } from "@/components/admin/delete-event-button";
 import { EventForm } from "@/components/admin/event-form";
 import { ParticipantForm } from "@/components/admin/participant-form";
 import { ParticipantList } from "@/components/admin/participant-list";
+import { ResultsPublishedToggle } from "@/components/admin/results-published-toggle";
 import { Card } from "@/components/ui";
 import { updateEvent } from "@/lib/actions/events";
 import { addParticipant } from "@/lib/actions/participants";
@@ -75,6 +76,11 @@ export default async function AdminEventDetailPage({ params }: PageProps) {
         </div>
       </Card>
 
+      <ResultsPublishedToggle
+        eventId={event.id}
+        resultsPublished={event.resultsPublished}
+      />
+
       <section className="space-y-4">
         <div>
           <h2 className="text-lg font-semibold text-text-primary">Participants</h2>
@@ -87,12 +93,7 @@ export default async function AdminEventDetailPage({ params }: PageProps) {
         <ParticipantList eventId={id} participants={event.participants} />
       </section>
 
-      <EventShareSection
-        eventId={event.id}
-        slug={event.slug}
-        baseUrl={baseUrl}
-        resultsPublished={event.resultsPublished}
-      />
+      <EventShareSection slug={event.slug} baseUrl={baseUrl} />
     </main>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useTransition } from "react";
 import { toggleResultsPublished } from "@/lib/actions/events";
+import { Button, Card } from "@/components/ui";
 
 type ResultsPublishedToggleProps = {
   eventId: string;
@@ -21,22 +22,31 @@ export function ResultsPublishedToggle({
   }
 
   return (
-    <button
-      type="button"
-      onClick={handleToggle}
-      disabled={pending}
-      title={
-        resultsPublished
-          ? "Unpublish results (hide from the public)"
-          : "Publish results (make visible to the public)"
-      }
-      className={
-        resultsPublished
-          ? "inline-flex rounded-full bg-live/15 px-2.5 py-0.5 text-xs font-medium text-live transition hover:bg-live/25 disabled:opacity-60"
-          : "inline-flex rounded-full bg-surface-raised px-2.5 py-0.5 text-xs font-medium text-text-muted transition hover:bg-surface-raised/80 disabled:opacity-60"
-      }
-    >
-      {pending ? "…" : resultsPublished ? "Results published" : "Results unpublished"}
-    </button>
+    <Card className="p-6">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h2 className="text-lg font-semibold text-text-primary">
+            Results publishing
+          </h2>
+          <p className="mt-1 text-sm text-text-muted">
+            {resultsPublished
+              ? "Results are visible to the public."
+              : "Results are hidden from the public until you publish them."}
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant={resultsPublished ? "success" : "ghost"}
+          onClick={handleToggle}
+          disabled={pending}
+        >
+          {pending
+            ? "…"
+            : resultsPublished
+              ? "Published · click to unpublish"
+              : "Publish results"}
+        </Button>
+      </div>
+    </Card>
   );
 }
