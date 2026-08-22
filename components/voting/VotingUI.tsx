@@ -7,6 +7,7 @@ import { Button, Card } from "@/components/ui";
 import type { PublicParticipant } from "@/lib/events/public";
 import { loadVisitorId } from "@/lib/voting/client-fingerprint";
 import {
+  MAX_VOTE_LOCATION_ACCURACY_METERS,
   requestVoterLocation,
   type GeolocationResult,
 } from "@/lib/voting/client-geolocation";
@@ -29,10 +30,9 @@ type VotingUIProps = {
   geofenceEnabled: boolean;
 };
 
-const LOCATION_BLOCKED_MESSAGES: Record<
-  Exclude<GeolocationResult, { ok: true }>["reason"],
-  string
-> = {
+type BlockedReason = Exclude<GeolocationResult, { ok: true }>["reason"] | "imprecise";
+
+const LOCATION_BLOCKED_MESSAGES: Record<BlockedReason, string> = {
   denied:
     "You denied the location permission request. Enable location access for this site in your browser settings, then reload the page to vote.",
   timeout:
@@ -40,6 +40,8 @@ const LOCATION_BLOCKED_MESSAGES: Record<
   unavailable:
     "Your location couldn't be determined. Make sure location services are enabled on your device and try again.",
   unsupported: "Your browser doesn't support location access, so you can't vote in this event.",
+  imprecise:
+    "Your device only shared an approximate location, which isn't precise enough to confirm you're at the event. Choose \"Precise\" location for this site in your browser settings, then try again.",
 };
 
 export function VotingUI({
@@ -54,13 +56,12 @@ export function VotingUI({
     geofenceEnabled ? "location_gate" : "voting",
   );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [blockedReason, setBlockedReason] =
-    useState<Exclude<GeolocationResult, { ok: true }>["reason"] | null>(null);
+  const [blockedReason, setBlockedReason] = useState<BlockedReason | null>(null);
   const [visitorId, setVisitorId] = useState<string | null>(null);
   const [fingerprintReady, setFingerprintReady] = useState(false);
-  const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(
-    null,
-  );
+  const [coords, setCoords] = useState<
+    { latitude: number; longitude: number; accuracy: number } | null
+  >(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -82,7 +83,16 @@ export function VotingUI({
     const result = await requestVoterLocation();
 
     if (result.ok) {
-      setCoords({ latitude: result.latitude, longitude: result.longitude });
+      if (result.accuracy > MAX_VOTE_LOCATION_ACCURACY_METERS) {
+        setBlockedReason("imprecise");
+        setView("location_blocked");
+        return;
+      }
+      setCoords({
+        latitude: result.latitude,
+        longitude: result.longitude,
+        accuracy: result.accuracy,
+      });
       setView("voting");
       return;
     }
@@ -162,7 +172,9 @@ export function VotingUI({
         icon={<LocationPinIcon />}
         tone="danger"
       >
-        {blockedReason === "timeout" || blockedReason === "unavailable" ? (
+        {blockedReason === "timeout" ||
+        blockedReason === "unavailable" ||
+        blockedReason === "imprecise" ? (
           <Button onClick={shareLocation} className="w-full">
             Try again
           </Button>

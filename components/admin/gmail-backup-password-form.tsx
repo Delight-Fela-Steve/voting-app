@@ -92,7 +92,7 @@ export function GmailBackupPasswordForm({
           </Button>
         </div>
       ) : (
-        <form onSubmit={handleSave} className="mt-3 space-y-3">
+        <form onSubmit={handleSave} method="post" className="mt-3 space-y-3">
           <div className="space-y-1">
             <label htmlFor="gmail-backup-app-password" className={labelClass}>
               App password

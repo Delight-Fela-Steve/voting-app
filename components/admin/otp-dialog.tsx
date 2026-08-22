@@ -61,7 +61,7 @@ export function OtpDialog({
           Enter the 6-digit code below.
         </p>
 
-        <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+        <form onSubmit={handleSubmit} method="post" className="mt-4 space-y-4">
           <label className="block">
             <span className="sr-only">Verification code</span>
             <input

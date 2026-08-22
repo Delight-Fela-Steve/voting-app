@@ -10,6 +10,7 @@ import {
   hashResetToken,
 } from "@/lib/password-reset/validate";
 import { prisma } from "@/lib/prisma";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { getPasswordResetUrl } from "@/lib/urls";
 
 export type ForgotPasswordState = {
@@ -23,6 +24,8 @@ export type ResetPasswordState = {
 
 const MIN_PASSWORD_LENGTH = 8;
 const RESET_EXPIRY_MINUTES = 60;
+const RESET_REQUEST_RATE_LIMIT = 3;
+const RESET_REQUEST_RATE_WINDOW_MS = 60 * 60_000;
 
 export async function requestPasswordReset(
   _prev: ForgotPasswordState,
@@ -38,6 +41,15 @@ export async function requestPasswordReset(
 
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return { error: "Enter a valid email address." };
+  }
+
+  const allowed = await checkRateLimit(
+    `password-reset-request:${email}`,
+    RESET_REQUEST_RATE_LIMIT,
+    RESET_REQUEST_RATE_WINDOW_MS,
+  );
+  if (!allowed) {
+    return { error: "Too many reset requests. Please try again later." };
   }
 
   if (!(await isEmailConfigured())) {

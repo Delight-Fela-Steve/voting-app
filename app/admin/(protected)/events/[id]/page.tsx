@@ -87,7 +87,12 @@ export default async function AdminEventDetailPage({ params }: PageProps) {
         <ParticipantList eventId={id} participants={event.participants} />
       </section>
 
-      <EventShareSection slug={event.slug} baseUrl={baseUrl} />
+      <EventShareSection
+        eventId={event.id}
+        slug={event.slug}
+        baseUrl={baseUrl}
+        resultsPublished={event.resultsPublished}
+      />
     </main>
   );
 }

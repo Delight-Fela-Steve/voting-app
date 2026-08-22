@@ -82,78 +82,129 @@ export function EventsTable({ events, isSuperAdmin }: EventsTableProps) {
       {filtered.length === 0 ? (
         <p className="text-sm text-text-muted">No events match your search.</p>
       ) : (
-        <Card className="overflow-hidden p-0">
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
-              <thead className="border-b border-border bg-surface-raised text-text-muted">
-                <tr>
-                  <th className="px-4 py-3 font-medium">Name</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 font-medium">Participants</th>
-                  <th className="px-4 py-3 font-medium">Votes</th>
-                  <th className="px-4 py-3 font-medium">Created</th>
-                  {isSuperAdmin ? (
-                    <th className="px-4 py-3 font-medium">Created by</th>
-                  ) : null}
-                  <th className="px-4 py-3 font-medium">Links</th>
-                  <th className="w-10 px-4 py-3">
-                    <span className="sr-only">Edit</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {filtered.map((event) => (
-                  <tr key={event.id} className="align-top hover:bg-surface-raised/60">
-                    <td className="px-4 py-3">
-                      <span className="font-medium text-text-primary">{event.name}</span>
-                      <p className="font-mono text-xs text-text-muted">{event.slug}</p>
-                    </td>
-                    <td className="px-4 py-3">
-                      <EventActiveToggle
-                        eventId={event.id}
-                        isActive={event.isActive}
-                      />
-                    </td>
-                    <td className="px-4 py-3 text-text-muted">
-                      {event.participantCount}
-                    </td>
-                    <td className="px-4 py-3 text-text-muted">{event.voteCount}</td>
-                    <td className="px-4 py-3 text-text-muted">
-                      {formatDate(event.createdAt)}
-                    </td>
+        <>
+          <Card className="hidden overflow-hidden p-0 md:block">
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-left text-sm">
+                <thead className="border-b border-border bg-surface-raised text-text-muted">
+                  <tr>
+                    <th className="px-4 py-3 font-medium">Name</th>
+                    <th className="px-4 py-3 font-medium">Status</th>
+                    <th className="px-4 py-3 font-medium">Participants</th>
+                    <th className="px-4 py-3 font-medium">Votes</th>
+                    <th className="px-4 py-3 font-medium">Created</th>
                     {isSuperAdmin ? (
-                      <td className="px-4 py-3 text-text-muted">
-                        {event.createdByName}
-                        {event.createdByRole ? (
-                          <p className="text-xs text-text-muted">
-                            {event.createdByRole === "SUPER_ADMIN"
-                              ? "Super admin"
-                              : "Admin"}
-                          </p>
-                        ) : null}
-                      </td>
+                      <th className="px-4 py-3 font-medium">Created by</th>
                     ) : null}
-                    <td className="px-4 py-3">
-                      <EventRowActions
-                        voteUrl={event.voteUrl}
-                        resultsUrl={event.resultsUrl}
-                      />
-                    </td>
-                    <td className="px-4 py-3">
-                      <Link
-                        href={`/admin/events/${event.id}`}
-                        className="inline-flex rounded-md p-1.5 text-text-muted hover:bg-surface-raised hover:text-accent"
-                        aria-label={`Edit ${event.name}`}
-                      >
-                        <PencilIcon />
-                      </Link>
-                    </td>
+                    <th className="px-4 py-3 font-medium">Links</th>
+                    <th className="w-10 px-4 py-3">
+                      <span className="sr-only">Edit</span>
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {filtered.map((event) => (
+                    <tr key={event.id} className="align-top hover:bg-surface-raised/60">
+                      <td className="px-4 py-3">
+                        <span className="font-medium text-text-primary">{event.name}</span>
+                        <p className="font-mono text-xs text-text-muted">{event.slug}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <EventActiveToggle
+                          eventId={event.id}
+                          isActive={event.isActive}
+                        />
+                      </td>
+                      <td className="px-4 py-3 text-text-muted">
+                        {event.participantCount}
+                      </td>
+                      <td className="px-4 py-3 text-text-muted">{event.voteCount}</td>
+                      <td className="px-4 py-3 text-text-muted">
+                        {formatDate(event.createdAt)}
+                      </td>
+                      {isSuperAdmin ? (
+                        <td className="px-4 py-3 text-text-muted">
+                          {event.createdByName}
+                          {event.createdByRole ? (
+                            <p className="text-xs text-text-muted">
+                              {event.createdByRole === "SUPER_ADMIN"
+                                ? "Super admin"
+                                : "Admin"}
+                            </p>
+                          ) : null}
+                        </td>
+                      ) : null}
+                      <td className="px-4 py-3">
+                        <EventRowActions
+                          voteUrl={event.voteUrl}
+                          resultsUrl={event.resultsUrl}
+                        />
+                      </td>
+                      <td className="px-4 py-3">
+                        <Link
+                          href={`/admin/events/${event.id}`}
+                          className="inline-flex rounded-md p-1.5 text-text-muted hover:bg-surface-raised hover:text-accent"
+                          aria-label={`Edit ${event.name}`}
+                        >
+                          <PencilIcon />
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+          <div className="space-y-3 md:hidden">
+            {filtered.map((event) => (
+              <Card key={event.id} className="p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="font-medium text-text-primary">{event.name}</p>
+                    <p className="font-mono text-xs text-text-muted">{event.slug}</p>
+                  </div>
+                  <Link
+                    href={`/admin/events/${event.id}`}
+                    className="inline-flex shrink-0 rounded-md p-1.5 text-text-muted hover:bg-surface-raised hover:text-accent"
+                    aria-label={`Edit ${event.name}`}
+                  >
+                    <PencilIcon />
+                  </Link>
+                </div>
+
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                  <EventActiveToggle eventId={event.id} isActive={event.isActive} />
+                  <span className="text-xs text-text-muted">
+                    {event.participantCount} participants
+                  </span>
+                  <span className="text-xs text-text-muted">
+                    {event.voteCount} votes
+                  </span>
+                </div>
+
+                <div className="mt-3 text-xs text-text-muted">
+                  <p>Created {formatDate(event.createdAt)}</p>
+                  {isSuperAdmin && event.createdByName ? (
+                    <p>
+                      By {event.createdByName}
+                      {event.createdByRole
+                        ? ` · ${event.createdByRole === "SUPER_ADMIN" ? "Super admin" : "Admin"}`
+                        : ""}
+                    </p>
+                  ) : null}
+                </div>
+
+                <div className="mt-3 border-t border-border pt-3">
+                  <EventRowActions
+                    voteUrl={event.voteUrl}
+                    resultsUrl={event.resultsUrl}
+                  />
+                </div>
+              </Card>
+            ))}
           </div>
-        </Card>
+        </>
       )}
     </div>
   );

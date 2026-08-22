@@ -3,6 +3,12 @@ import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import type { Role } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import { checkRateLimit } from "@/lib/rate-limit";
+
+const LOGIN_RATE_LIMIT = 8;
+const LOGIN_RATE_WINDOW_MS = 15 * 60_000;
+const DUMMY_PASSWORD_HASH =
+  "$2a$12$" + "a".repeat(53);
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,
@@ -20,8 +26,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return null;
         }
 
+        const allowed = await checkRateLimit(
+          `login:${email.toLowerCase()}`,
+          LOGIN_RATE_LIMIT,
+          LOGIN_RATE_WINDOW_MS,
+        );
+        if (!allowed) {
+          return null;
+        }
+
         const user = await prisma.user.findUnique({ where: { email } });
         if (!user) {
+          await bcrypt.compare(password, DUMMY_PASSWORD_HASH);
           return null;
         }
 

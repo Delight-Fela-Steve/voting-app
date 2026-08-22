@@ -6,11 +6,11 @@ import { VoteBarChart } from "@/components/results/VoteBarChart";
 import { Badge, Button, Card } from "@/components/ui";
 import { formatCountdown } from "@/lib/datetime/duration";
 import { useCountdown } from "@/lib/datetime/use-countdown";
-import type { EventResults } from "@/lib/results";
+import type { PublicEventResults } from "@/lib/results";
 
 type ResultsDashboardProps = {
   slug: string;
-  initialResults: EventResults;
+  initialResults: PublicEventResults;
 };
 
 const POLL_INTERVAL_MS = 2000;
@@ -66,7 +66,7 @@ export function ResultsDashboard({
           throw new Error(`Poll failed with status ${response.status}`);
         }
 
-        const payload = (await response.json()) as EventResults;
+        const payload = (await response.json()) as PublicEventResults;
 
         if (!cancelled) {
           setResults(payload);

@@ -22,6 +22,7 @@ type EventLocationMapProps = {
   latitude: number | null;
   longitude: number | null;
   radiusMeters: number | null;
+  accuracyMeters?: number | null;
   onLocationChange: (latitude: number, longitude: number) => void;
 };
 
@@ -29,12 +30,14 @@ export function EventLocationMap({
   latitude,
   longitude,
   radiusMeters,
+  accuracyMeters = null,
   onLocationChange,
 }: EventLocationMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const markerRef = useRef<Marker | null>(null);
   const circleRef = useRef<Circle | null>(null);
+  const accuracyCircleRef = useRef<Circle | null>(null);
   const onLocationChangeRef = useRef(onLocationChange);
 
   useEffect(() => {
@@ -94,6 +97,7 @@ export function EventLocationMap({
       mapRef.current = null;
       markerRef.current = null;
       circleRef.current = null;
+      accuracyCircleRef.current = null;
     };
     // Map is only initialized once; live updates are handled by the effect below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -136,8 +140,26 @@ export function EventLocationMap({
         circleRef.current.setLatLng(latLng);
         circleRef.current.setRadius(radiusMeters ?? 0);
       }
+
+      if (accuracyMeters !== null && accuracyMeters > 0) {
+        if (!accuracyCircleRef.current) {
+          accuracyCircleRef.current = L.circle(latLng, {
+            radius: accuracyMeters,
+            color: "#f59e0b",
+            dashArray: "6 6",
+            fillOpacity: 0.05,
+          }).addTo(map);
+        } else {
+          accuracyCircleRef.current.setLatLng(latLng);
+          accuracyCircleRef.current.setRadius(accuracyMeters);
+        }
+        map.fitBounds(accuracyCircleRef.current.getBounds(), { maxZoom: POINT_ZOOM });
+      } else if (accuracyCircleRef.current) {
+        accuracyCircleRef.current.remove();
+        accuracyCircleRef.current = null;
+      }
     });
-  }, [latitude, longitude, radiusMeters]);
+  }, [latitude, longitude, radiusMeters, accuracyMeters]);
 
   return (
     <div

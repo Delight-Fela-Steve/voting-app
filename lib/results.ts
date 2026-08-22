@@ -15,7 +15,12 @@ export type EventResults = {
   participants: ResultParticipant[];
   endsAt: string | null;
   updatedAt: string;
+  resultsPublished: boolean;
+  createdById: string;
 };
+
+/** Shape returned to non-owner clients: internal creator id stripped. */
+export type PublicEventResults = Omit<EventResults, "createdById">;
 
 function sortParticipantsByVotes(
   participants: ResultParticipant[]
@@ -39,6 +44,8 @@ export async function getEventResults(
       name: true,
       slug: true,
       endsAt: true,
+      resultsPublished: true,
+      createdById: true,
       participants: {
         orderBy: { displayOrder: "asc" },
         select: {
@@ -77,5 +84,7 @@ export async function getEventResults(
     participants,
     endsAt: event.endsAt ? event.endsAt.toISOString() : null,
     updatedAt: new Date().toISOString(),
+    resultsPublished: event.resultsPublished,
+    createdById: event.createdById,
   };
 }

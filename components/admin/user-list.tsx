@@ -83,57 +83,87 @@ export function UserList({ users }: UserListProps) {
   }
 
   return (
-    <Card className="overflow-hidden p-0">
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-border">
-          <thead className="bg-surface-raised">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-text-muted">
-                Name
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-text-muted">
-                Email
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-text-muted">
-                Role
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-text-muted">
-                Joined
-              </th>
-              <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-text-muted">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {users.map((user) => (
-              <tr key={user.id} className="hover:bg-surface-raised/60">
-                <td className="px-4 py-3 text-sm font-medium text-text-primary">
-                  {user.name}
-                </td>
-                <td className="px-4 py-3 text-sm text-text-muted">{user.email}</td>
-                <td className="px-4 py-3">
-                  <span
-                    className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${roleClasses(user.role)}`}
-                  >
-                    {user.role === "SUPER_ADMIN" ? "Super admin" : "Admin"}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-sm text-text-muted">
-                  {formatDate(user.createdAt)}
-                </td>
-                <td className="px-4 py-3 text-right">
-                  {user.canDelete ? (
-                    <DeleteUserButton userId={user.id} userName={user.name} />
-                  ) : (
-                    <span className="text-xs text-text-muted">—</span>
-                  )}
-                </td>
+    <>
+      <Card className="hidden overflow-hidden p-0 md:block">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-border">
+            <thead className="bg-surface-raised">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-text-muted">
+                  Name
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-text-muted">
+                  Email
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-text-muted">
+                  Role
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-text-muted">
+                  Joined
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-text-muted">
+                  Actions
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {users.map((user) => (
+                <tr key={user.id} className="hover:bg-surface-raised/60">
+                  <td className="px-4 py-3 text-sm font-medium text-text-primary">
+                    {user.name}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-text-muted">{user.email}</td>
+                  <td className="px-4 py-3">
+                    <span
+                      className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${roleClasses(user.role)}`}
+                    >
+                      {user.role === "SUPER_ADMIN" ? "Super admin" : "Admin"}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-text-muted">
+                    {formatDate(user.createdAt)}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    {user.canDelete ? (
+                      <DeleteUserButton userId={user.id} userName={user.name} />
+                    ) : (
+                      <span className="text-xs text-text-muted">—</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      <div className="space-y-3 md:hidden">
+        {users.map((user) => (
+          <Card key={user.id} className="p-4">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="text-sm font-medium text-text-primary">{user.name}</p>
+                <p className="text-sm text-text-muted">{user.email}</p>
+              </div>
+              <span
+                className={`inline-flex shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${roleClasses(user.role)}`}
+              >
+                {user.role === "SUPER_ADMIN" ? "Super admin" : "Admin"}
+              </span>
+            </div>
+            <div className="mt-3 flex items-center justify-between gap-2 border-t border-border pt-3">
+              <span className="text-xs text-text-muted">
+                Joined {formatDate(user.createdAt)}
+              </span>
+              {user.canDelete ? (
+                <DeleteUserButton userId={user.id} userName={user.name} />
+              ) : (
+                <span className="text-xs text-text-muted">—</span>
+              )}
+            </div>
+          </Card>
+        ))}
       </div>
-    </Card>
+    </>
   );
 }

@@ -30,6 +30,11 @@ export function VoteBarChart({ participants }: VoteBarChartProps) {
 
   const chartHeight = Math.max(chartData.length * 56 + 48, 160);
   const maxVotes = Math.max(...chartData.map((row) => row.votes), 1);
+  const isNarrow = width > 0 && width < 480;
+  const yAxisWidth = isNarrow ? 96 : 128;
+  const chartMargin = isNarrow
+    ? { top: 8, right: 24, left: 8, bottom: 8 }
+    : { top: 8, right: 40, left: 8, bottom: 8 };
 
   useEffect(() => {
     const element = containerRef.current;
@@ -58,7 +63,7 @@ export function VoteBarChart({ participants }: VoteBarChartProps) {
           height={chartHeight}
           data={chartData}
           layout="vertical"
-          margin={{ top: 8, right: 40, left: 8, bottom: 8 }}
+          margin={chartMargin}
         >
           <CartesianGrid
             horizontal={false}
@@ -76,7 +81,7 @@ export function VoteBarChart({ participants }: VoteBarChartProps) {
           <YAxis
             type="category"
             dataKey="name"
-            width={128}
+            width={yAxisWidth}
             tick={{ fill: "var(--text-primary)", fontSize: 13, fontWeight: 500 }}
             axisLine={false}
             tickLine={false}

@@ -1,5 +1,14 @@
 import { isEmailConfigured, sendMail } from "@/lib/email/mailer";
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 type SendInviteEmailInput = {
   to: string;
   inviteUrl: string;
@@ -29,7 +38,7 @@ export async function sendInviteEmail(
 
   const html = `
     <p>Hi,</p>
-    <p>${input.invitedByName} invited you to join the Voting App as an admin.</p>
+    <p>${escapeHtml(input.invitedByName)} invited you to join the Voting App as an admin.</p>
     <p><a href="${input.inviteUrl}">Accept invitation and create your account</a></p>
     <p>This link expires on ${expiresLabel}.</p>
     <p>If you did not expect this email, you can ignore it.</p>

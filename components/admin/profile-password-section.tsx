@@ -78,7 +78,7 @@ export function ProfilePasswordSection() {
           You will receive a verification code by email to confirm the change.
         </p>
 
-        <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+        <form onSubmit={handleSubmit} method="post" className="mt-4 space-y-4">
           <div className="space-y-1">
             <label htmlFor="current-password" className={labelClass}>
               Current password

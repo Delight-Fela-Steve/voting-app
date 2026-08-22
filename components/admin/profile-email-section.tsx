@@ -71,9 +71,9 @@ export function ProfileEmailSection({ email }: ProfileEmailSectionProps) {
 
   return (
     <>
-      <div className="grid grid-cols-3 gap-4 px-4 py-3">
+      <div className="grid grid-cols-1 gap-1 px-4 py-3 sm:grid-cols-3 sm:gap-4">
         <dt className="text-sm font-medium text-text-muted">Email</dt>
-        <dd className="col-span-2 text-sm text-text-primary">
+        <dd className="text-sm text-text-primary sm:col-span-2">
           {isChanging ? (
             <div className="space-y-3">
               <p className="text-text-muted">Current: {email}</p>

@@ -168,6 +168,30 @@ export async function toggleEventActive(
   return {};
 }
 
+export async function toggleResultsPublished(
+  eventId: string,
+): Promise<EventActionState> {
+  const user = await requireUser();
+  const existing = await prisma.event.findFirst({
+    where: { id: eventId, ...eventWhereForUser(user) },
+    select: { id: true, resultsPublished: true },
+  });
+
+  if (!existing) {
+    return { error: "Event not found or you do not have access." };
+  }
+
+  await prisma.event.update({
+    where: { id: eventId },
+    data: { resultsPublished: !existing.resultsPublished },
+  });
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/events");
+  revalidatePath(`/admin/events/${eventId}`);
+  return {};
+}
+
 export async function deleteEvent(eventId: string): Promise<EventActionState> {
   const user = await requireUser();
   const existing = await prisma.event.findFirst({

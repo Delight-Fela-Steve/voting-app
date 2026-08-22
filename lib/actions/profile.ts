@@ -7,6 +7,7 @@ import { signOut } from "@/lib/auth";
 import { requireUser } from "@/lib/auth/require-user";
 import { sendOtpEmail } from "@/lib/email/send-otp-email";
 import { prisma } from "@/lib/prisma";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export type ProfileActionState = {
   error?: string;
@@ -17,6 +18,8 @@ export type ProfileActionState = {
 
 const MIN_PASSWORD_LENGTH = 8;
 const OTP_EXPIRY_MINUTES = 10;
+const OTP_CONFIRM_RATE_LIMIT = 5;
+const OTP_CONFIRM_RATE_WINDOW_MS = OTP_EXPIRY_MINUTES * 60 * 1000;
 
 function normalizeOptionalName(value: unknown): string | null {
   if (typeof value !== "string") {
@@ -161,6 +164,15 @@ export async function confirmEmailChange(
     return { error: "Enter the 6-digit verification code." };
   }
 
+  const allowed = await checkRateLimit(
+    `otp-confirm:${user.id}:CHANGE_EMAIL`,
+    OTP_CONFIRM_RATE_LIMIT,
+    OTP_CONFIRM_RATE_WINDOW_MS,
+  );
+  if (!allowed) {
+    return { error: "Too many attempts. Please request a new code." };
+  }
+
   const otp = await prisma.otpCode.findFirst({
     where: {
       userId: user.id,
@@ -297,6 +309,15 @@ export async function confirmPasswordChange(
 
   if (typeof code !== "string" || !/^\d{6}$/.test(code.trim())) {
     return { error: "Enter the 6-digit verification code." };
+  }
+
+  const allowed = await checkRateLimit(
+    `otp-confirm:${user.id}:CHANGE_PASSWORD`,
+    OTP_CONFIRM_RATE_LIMIT,
+    OTP_CONFIRM_RATE_WINDOW_MS,
+  );
+  if (!allowed) {
+    return { error: "Too many attempts. Please request a new code." };
   }
 
   const otp = await prisma.otpCode.findFirst({

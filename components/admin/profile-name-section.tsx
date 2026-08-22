@@ -139,9 +139,9 @@ function NameRow({
   pending,
 }: NameRowProps) {
   return (
-    <div className="grid grid-cols-3 gap-4 px-4 py-3">
+    <div className="grid grid-cols-1 gap-1 px-4 py-3 sm:grid-cols-3 sm:gap-4">
       <dt className="text-sm font-medium text-text-muted">{label}</dt>
-      <dd className="col-span-2 flex items-start justify-between gap-2 text-sm text-text-primary">
+      <dd className="flex items-start justify-between gap-2 text-sm text-text-primary sm:col-span-2">
         {isEditing ? (
           <div className="flex w-full flex-col gap-2">
             <input

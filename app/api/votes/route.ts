@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { haversineDistanceMeters } from "@/lib/geo/distance";
 import { prisma } from "@/lib/prisma";
+import { MAX_VOTE_LOCATION_ACCURACY_METERS } from "@/lib/voting/client-geolocation";
 import { buildVoterKey, getClientIp } from "@/lib/votes/voter-key";
 
 type VoteBody = {
@@ -9,6 +10,7 @@ type VoteBody = {
   fingerprint?: string;
   latitude?: number;
   longitude?: number;
+  accuracy?: number;
 };
 
 export async function POST(request: Request) {
@@ -20,7 +22,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { slug, participantId, fingerprint, latitude, longitude } = body;
+  const { slug, participantId, fingerprint, latitude, longitude, accuracy } = body;
 
   if (!slug?.trim() || !participantId?.trim()) {
     return NextResponse.json(
@@ -34,6 +36,8 @@ export async function POST(request: Request) {
     select: {
       id: true,
       isActive: true,
+      startsAt: true,
+      endsAt: true,
       geofenceEnabled: true,
       latitude: true,
       longitude: true,
@@ -50,6 +54,17 @@ export async function POST(request: Request) {
   }
 
   if (!event.isActive) {
+    return NextResponse.json({ error: "Voting has ended" }, { status: 403 });
+  }
+
+  const now = new Date();
+  if (event.startsAt && now < event.startsAt) {
+    return NextResponse.json(
+      { error: "Voting has not started yet" },
+      { status: 403 }
+    );
+  }
+  if (event.endsAt && now > event.endsAt) {
     return NextResponse.json({ error: "Voting has ended" }, { status: 403 });
   }
 
@@ -71,6 +86,20 @@ export async function POST(request: Request) {
     ) {
       return NextResponse.json(
         { error: "Location is required to vote in this event" },
+        { status: 400 }
+      );
+    }
+
+    if (
+      typeof accuracy !== "number" ||
+      !Number.isFinite(accuracy) ||
+      accuracy > MAX_VOTE_LOCATION_ACCURACY_METERS
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Your location isn't precise enough to verify you're at the voting location. Enable precise location and try again.",
+        },
         { status: 400 }
       );
     }

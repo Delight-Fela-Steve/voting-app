@@ -157,6 +157,7 @@ export function EventForm({ action, submitLabel, event }: EventFormProps) {
   );
   const [locatingSelf, setLocatingSelf] = useState(false);
   const [locateError, setLocateError] = useState<string | null>(null);
+  const [locationAccuracy, setLocationAccuracy] = useState<number | null>(null);
   const hiddenEndsAtRef = useRef<HTMLInputElement>(null);
   const isFirstRender = useRef(true);
 
@@ -167,6 +168,7 @@ export function EventForm({ action, submitLabel, event }: EventFormProps) {
   function handleMapLocationChange(lat: number, lng: number) {
     setLatitude(lat.toFixed(6));
     setLongitude(lng.toFixed(6));
+    setLocationAccuracy(null);
   }
 
   async function handleUseCurrentLocation() {
@@ -187,6 +189,7 @@ export function EventForm({ action, submitLabel, event }: EventFormProps) {
 
     setLatitude(result.latitude.toFixed(6));
     setLongitude(result.longitude.toFixed(6));
+    setLocationAccuracy(result.accuracy);
   }
 
   useEffect(() => {
@@ -446,11 +449,23 @@ export function EventForm({ action, submitLabel, event }: EventFormProps) {
               latitude={parsedLatitude}
               longitude={parsedLongitude}
               radiusMeters={parsedRadius}
+              accuracyMeters={locationAccuracy}
               onLocationChange={handleMapLocationChange}
             />
             <p className="text-xs text-text-muted">
               Click the map or drag the marker to set the voting location.
             </p>
+
+            {locationAccuracy !== null ? (
+              <p
+                className={`text-sm ${locationAccuracy > 100 ? "text-amber-400" : "text-text-muted"}`}
+              >
+                Approximate location, accurate to ~{Math.round(locationAccuracy)}m.
+                {locationAccuracy > 100
+                  ? " Click the map to pinpoint the exact spot."
+                  : ""}
+              </p>
+            ) : null}
 
             {locateError ? (
               <p className="text-sm text-red-400" role="alert">
@@ -472,7 +487,10 @@ export function EventForm({ action, submitLabel, event }: EventFormProps) {
                   max={90}
                   required={geofenceEnabled}
                   value={latitude}
-                  onChange={(e) => setLatitude(e.target.value)}
+                  onChange={(e) => {
+                    setLatitude(e.target.value);
+                    setLocationAccuracy(null);
+                  }}
                   className={inputClass}
                 />
               </div>
@@ -489,7 +507,10 @@ export function EventForm({ action, submitLabel, event }: EventFormProps) {
                   max={180}
                   required={geofenceEnabled}
                   value={longitude}
-                  onChange={(e) => setLongitude(e.target.value)}
+                  onChange={(e) => {
+                    setLongitude(e.target.value);
+                    setLocationAccuracy(null);
+                  }}
                   className={inputClass}
                 />
               </div>

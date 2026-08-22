@@ -61,7 +61,7 @@ export function GmailPasswordForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} method="post" className="space-y-4">
       <p className="text-sm text-text-muted">
         Use a Gmail address and a 16-character app password from your Google
         account security settings.
