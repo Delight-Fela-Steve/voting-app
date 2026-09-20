@@ -11,12 +11,35 @@ export type EventActionState = {
   error?: string;
 };
 
-function parseOptionalDate(value: FormDataEntryValue | null): Date | null {
+/**
+ * A date-time string with no trailing `Z` or `+/-HH:MM` offset is parsed by
+ * `new Date()` against the *runtime's* timezone. The admin's browser and the
+ * server rarely share one (Vercel runs as UTC), so accepting a naive string
+ * silently shifts the schedule by the offset between them. Only absolute
+ * instants are accepted; the client converts before submitting.
+ */
+const ABSOLUTE_INSTANT = /(?:Z|[+-]\d{2}:?\d{2})$/i;
+
+function parseOptionalDate(
+  value: FormDataEntryValue | null,
+): { data: Date | null } | { error: string } {
   if (typeof value !== "string" || !value.trim()) {
-    return null;
+    return { data: null };
   }
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date;
+
+  const trimmed = value.trim();
+
+  if (!ABSOLUTE_INSTANT.test(trimmed)) {
+    return {
+      error:
+        "The schedule was sent without a timezone. Reload the page and try again.",
+    };
+  }
+
+  const date = new Date(trimmed);
+  return Number.isNaN(date.getTime())
+    ? { error: "The schedule contains an invalid date." }
+    : { data: date };
 }
 
 function parseOptionalFloat(value: FormDataEntryValue | null): number | null {
@@ -75,6 +98,16 @@ function parseEventFields(formData: FormData) {
     return { error: geofence.error };
   }
 
+  const startsAt = parseOptionalDate(formData.get("startsAt"));
+  if ("error" in startsAt) {
+    return { error: startsAt.error };
+  }
+
+  const endsAt = parseOptionalDate(formData.get("endsAt"));
+  if ("error" in endsAt) {
+    return { error: endsAt.error };
+  }
+
   const descriptionValue =
     typeof description === "string" && description.trim()
       ? description.trim()
@@ -85,8 +118,8 @@ function parseEventFields(formData: FormData) {
       name: name.trim(),
       description: descriptionValue,
       isActive,
-      startsAt: parseOptionalDate(formData.get("startsAt")),
-      endsAt: parseOptionalDate(formData.get("endsAt")),
+      startsAt: startsAt.data,
+      endsAt: endsAt.data,
       ...geofence.data,
     },
   };

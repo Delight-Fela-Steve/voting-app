@@ -1,6 +1,12 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import {
+  useActionState,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { EventLocationMap } from "@/components/admin/event-location-map";
 import { Button } from "@/components/ui";
 import type { EventActionState } from "@/lib/actions/events";
@@ -28,6 +34,9 @@ type EventFormValues = {
 const DEFAULT_RADIUS_METERS = "150";
 
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
+
+/** The "has hydrated" store never changes, so it never needs a subscriber. */
+const subscribeToNothing = () => () => {};
 
 function getDefaultSchedule(): { startsAt: Date; endsAt: Date } {
   const now = new Date();
@@ -103,6 +112,23 @@ function deriveDuration(
   return { value: String(normalized.value), unit: normalized.unit };
 }
 
+/**
+ * "Expires in" mode has no end-time field: the end is start + duration. Returns
+ * an empty string while the duration input holds an incomplete value, which
+ * clears the stored end time rather than guessing one.
+ */
+function durationEndsAtIso(
+  startsAt: Date | null,
+  duration: { value: string; unit: DurationUnit },
+): string {
+  const amount = Number.parseInt(duration.value, 10);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return "";
+  }
+  const base = startsAt?.getTime() ?? Date.now();
+  return new Date(base + amount * DURATION_UNIT_MS[duration.unit]).toISOString();
+}
+
 function getInitialDuration(event?: EventFormValues): {
   value: string;
   unit: DurationUnit;
@@ -137,6 +163,15 @@ export function EventForm({ action, submitLabel, event }: EventFormProps) {
   const [duration, setDuration] = useState(() => getInitialDuration(event));
   const [schedule, setSchedule] = useState(() => getInitialSchedule(event));
   const [justSaved, setJustSaved] = useState(false);
+  // `getInitialSchedule` formats against the runtime's timezone, so the value
+  // it produces during SSR is the server's wall clock, not the admin's. Every
+  // render site that depends on it is withheld until this flips true, leaving
+  // the browser's own value to be the first one rendered.
+  const mounted = useSyncExternalStore(
+    subscribeToNothing,
+    () => true,
+    () => false,
+  );
   const [geofenceEnabled, setGeofenceEnabled] = useState(
     () => event?.geofenceEnabled ?? false,
   );
@@ -158,7 +193,6 @@ export function EventForm({ action, submitLabel, event }: EventFormProps) {
   const [locatingSelf, setLocatingSelf] = useState(false);
   const [locateError, setLocateError] = useState<string | null>(null);
   const [locationAccuracy, setLocationAccuracy] = useState<number | null>(null);
-  const hiddenEndsAtRef = useRef<HTMLInputElement>(null);
   const isFirstRender = useRef(true);
 
   const parsedLatitude = latitude.trim() ? Number.parseFloat(latitude) : null;
@@ -254,27 +288,20 @@ export function EventForm({ action, submitLabel, event }: EventFormProps) {
     }
   }
 
-  function handleSubmit() {
-    if (showCustomDate || !hiddenEndsAtRef.current) {
-      return;
-    }
-
-    const amount = Number.parseInt(duration.value, 10);
-    if (!Number.isFinite(amount) || amount <= 0) {
-      return;
-    }
-
-    const base = parseDatetimeLocal(schedule.startsAt)?.getTime() ?? Date.now();
-    hiddenEndsAtRef.current.value = new Date(
-      base + amount * DURATION_UNIT_MS[duration.unit],
-    ).toISOString();
-  }
+  // The values actually submitted. A `datetime-local` value is timezone-naive
+  // by specification, and the server would resolve it against its own timezone
+  // (UTC on Vercel), shifting the schedule by the offset between the two. The
+  // browser is the only party that knows the admin's timezone, so it converts
+  // to an absolute instant here.
+  const isoStartsAt = startsAtDate?.toISOString() ?? "";
+  const isoEndsAt = showCustomDate
+    ? (parseDatetimeLocal(schedule.endsAt)?.toISOString() ?? "")
+    : durationEndsAtIso(startsAtDate, duration);
 
   return (
     <form
       action={formAction}
       className="space-y-5"
-      onSubmit={handleSubmit}
       onChange={() => setJustSaved(false)}
     >
       <div className="space-y-1">
@@ -364,7 +391,7 @@ export function EventForm({ action, submitLabel, event }: EventFormProps) {
           Set custom date and time
         </button>
 
-        {showCustomDate ? (
+        {mounted && showCustomDate ? (
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1">
               <label htmlFor="startsAt" className={labelClass}>
@@ -372,7 +399,6 @@ export function EventForm({ action, submitLabel, event }: EventFormProps) {
               </label>
               <input
                 id="startsAt"
-                name="startsAt"
                 type="datetime-local"
                 value={schedule.startsAt}
                 onChange={(e) => handleStartsAtChange(e.target.value)}
@@ -385,7 +411,6 @@ export function EventForm({ action, submitLabel, event }: EventFormProps) {
               </label>
               <input
                 id="endsAt"
-                name="endsAt"
                 type="datetime-local"
                 value={schedule.endsAt}
                 onChange={(e) => handleEndsAtChange(e.target.value)}
@@ -393,12 +418,17 @@ export function EventForm({ action, submitLabel, event }: EventFormProps) {
               />
             </div>
           </div>
-        ) : (
+        ) : null}
+
+        {/* The fields above are display only. These carry the submitted values,
+            and are withheld until mount so the server never renders a schedule
+            resolved against its own timezone. */}
+        {mounted ? (
           <>
-            <input type="hidden" name="startsAt" value={schedule.startsAt} />
-            <input ref={hiddenEndsAtRef} type="hidden" name="endsAt" />
+            <input type="hidden" name="startsAt" value={isoStartsAt} />
+            <input type="hidden" name="endsAt" value={isoEndsAt} />
           </>
-        )}
+        ) : null}
 
         {remainingMs !== null ? (
           <p className="text-sm text-text-muted">
