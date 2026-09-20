@@ -29,6 +29,11 @@ enum EmailProvider {
   GMAIL_PASSWORD
 }
 
+// Every DateTime is Timestamptz so the stored value carries its offset. A plain
+// `timestamp` keeps no timezone, so anything reading the column directly (psql,
+// a GUI, a raw pg query) resolves it against its own timezone and silently
+// reports a different instant than the one that was written.
+
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
@@ -37,8 +42,8 @@ model User {
   lastName     String?
   passwordHash String
   role         Role     @default(ADMIN)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime @updatedAt @db.Timestamptz(3)
 
   eventsCreated       Event[]              @relation("EventCreator")
   invitationsSent     Invitation[]         @relation("InvitationInviter")
@@ -53,9 +58,9 @@ model PasswordResetToken {
   tokenHash String    @unique
   userId    String
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  expiresAt DateTime
-  usedAt    DateTime?
-  createdAt DateTime  @default(now())
+  expiresAt DateTime  @db.Timestamptz(3)
+  usedAt    DateTime? @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @db.Timestamptz(3)
 
   @@index([userId])
 }
@@ -67,22 +72,22 @@ model OtpCode {
   purpose   OtpPurpose
   code      String
   payload   String?
-  expiresAt DateTime
-  usedAt    DateTime?
-  createdAt DateTime   @default(now())
+  expiresAt DateTime   @db.Timestamptz(3)
+  usedAt    DateTime?  @db.Timestamptz(3)
+  createdAt DateTime   @default(now()) @db.Timestamptz(3)
 
   @@index([userId, purpose])
 }
 
 model Invitation {
-  id          String           @id @default(cuid())
-  email       String?
-  token       String           @unique
-  status      InvitationStatus @default(PENDING)
-  expiresAt   DateTime
-  createdAt   DateTime         @default(now())
-  usedAt      DateTime?
-  revokedAt   DateTime?
+  id        String           @id @default(cuid())
+  email     String?
+  token     String           @unique
+  status    InvitationStatus @default(PENDING)
+  expiresAt DateTime         @db.Timestamptz(3)
+  createdAt DateTime         @default(now()) @db.Timestamptz(3)
+  usedAt    DateTime?        @db.Timestamptz(3)
+  revokedAt DateTime?        @db.Timestamptz(3)
 
   invitedById String
   invitedBy   User   @relation("InvitationInviter", fields: [invitedById], references: [id])
@@ -100,15 +105,15 @@ model Event {
   description      String?
   slug             String    @unique
   isActive         Boolean   @default(true)
-  startsAt         DateTime?
-  endsAt           DateTime?
+  startsAt         DateTime? @db.Timestamptz(3)
+  endsAt           DateTime? @db.Timestamptz(3)
   resultsPublished Boolean   @default(false)
   geofenceEnabled  Boolean   @default(false)
   latitude         Float?
   longitude        Float?
   radiusMeters     Int?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  createdAt        DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime  @updatedAt @db.Timestamptz(3)
 
   createdById String
   createdBy   User   @relation("EventCreator", fields: [createdById], references: [id])
@@ -137,10 +142,10 @@ model Vote {
   latitude       Float?
   longitude      Float?
   distanceMeters Float?
-  createdAt      DateTime @default(now())
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
 
   eventId String
-  event   Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   participantId String
   participant   Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
@@ -151,7 +156,7 @@ model Vote {
 model RateLimitEntry {
   id        String   @id @default(cuid())
   key       String
-  createdAt DateTime @default(now())
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
 
   @@index([key, createdAt])
 }
@@ -164,7 +169,7 @@ model EmailConfig {
   appPassword  String?
   accessToken  String?
   refreshToken String?
-  tokenExpiry  DateTime?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  tokenExpiry  DateTime?     @db.Timestamptz(3)
+  createdAt    DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime      @updatedAt @db.Timestamptz(3)
 }
